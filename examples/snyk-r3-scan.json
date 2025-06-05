@@ -1,0 +1,94 @@
+{
+  "scans": {
+    "corda-os": {
+      "description": "Corda OS project scan, rel-pack items only",
+      "root": "/Users/chris.cochrane/dev/git/corda/corda",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/corda/.snyk",
+      "type": "dev",
+      "sub-projects": [ "node/capsule",
+                        "common-configuration-parsing",
+                        "common-logging",
+                        "common-validation",
+                        "confidential-identities",
+                        "core",
+                        "core-deterministic",
+                        "core-test-utils",
+                        "serialization-djvm/deserializers",
+                        "core-deterministic/testing/verifier",
+                        "finance/contracts",
+                        "finance/workflows",
+                        "client/jackson",
+                        "client/jfx",
+                        "client/mock",
+                        "node",
+                        "node-api",
+                        "node/djvm",
+                        "node-driver",
+                        "opentelemetry",
+                        "opentelemetry/opentelemetry-driver",
+                        "client/rpc",
+                        "serialization",
+                        "serialization-deterministic",
+                        "serialization-djvm",
+                        "test-common",
+                        "test-db",
+                        "test-utils",
+                        "testing/testserver",
+                        "testing/testserver/testcapsule",
+                        "tools/blobinspector",
+                        "tools/checkpoint-agent",
+                        "tools/cliutils",
+                        "tools/explorer",
+                        "tools/bootstrapper",
+                        "tools/network-builder"
+                    ],
+      "project-mapping": {
+        "common/configuration-parsing": "common-configuration-parsing",
+        "common/logging": "common-logging",
+        "common/validation": "common-validation",
+        "testing/core-test-utils": "core-test-utils",
+        "testing/test-utils": "test-utils",
+        "testing/test-common": "test-common",
+        "testing/node-driver": "node-driver"
+      }
+    },
+    "os-relpack": {
+      "description": "Corda OS release pack scan",
+      "root": "/Users/chris.cochrane/dev/git/corda/release-pack-generation",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
+      "type": "relpack",
+      "sub-projects": [],
+      "project-mapping": {}
+    },
+    "ent-relpack": {
+      "description": "Corda Enterprise release pack scan",
+      "root": "/Users/chris.cochrane/dev/git/corda/release-pack-generation",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
+      "type": "relpack",
+      "sub-projects": [ "runtime",
+                        "devtest",
+                        "optional-tools",
+                        "optional-sdk",
+                        "optional-gateway-plugins"],
+      "project-mapping": {}
+    },
+    "corda-os-dev": {
+      "description": "Corda OS project scan, rel-pack items only",
+      "root": "/Users/chris.cochrane/dev/git/corda/corda",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/corda/.snyk",
+      "type": "dev",
+      "sub-projects": [ "core",
+                        "node-api"
+                    ],
+      "project-mapping": {
+        "common/configuration-parsing": "common-configuration-parsing",
+        "common/logging": "common-logging",
+        "common/validation": "common-validation",
+        "testing/core-test-utils": "core-test-utils",
+        "testing/test-utils": "test-utils",
+        "testing/test-common": "test-common",
+        "testing/node-driver": "node-driver"
+      }
+    }
+  }
+}
