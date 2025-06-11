@@ -45,6 +45,7 @@ class ScanConfiguration:
         return self.json_data["scans"][scan_name][property_name]
 
     def get_scan_names(self):
+        # TBD - needed
         pass
 
     def get_scan_config_filename(self):

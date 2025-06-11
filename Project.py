@@ -23,12 +23,14 @@ class Project:
             score = self.json_data['vulnerabilities'][n]['cvssScore']
             cwe = self.json_data['vulnerabilities'][n]['identifiers']['CWE']
             cve = self.json_data['vulnerabilities'][n]['identifiers']['CVE']
+            name = self.json_data['vulnerabilities'][n]['name']
+            fixed = self.json_data['vulnerabilities'][n]['fixedIn']
             path = self.json_data['vulnerabilities'][n]['from']
 
             if id in self.vuln_index:
                 self.vuln_index[id].add_path(path)
             else:
-                self.vuln_index[id] = Vulnerability(id, sev, title, score, cwe, cve, path)
+                self.vuln_index[id] = Vulnerability(id, sev, title, score, cwe, cve, name, fixed, path)
 
     def _should_add_vuln(self,match_path,vuln):
         add_vuln = False
@@ -91,7 +93,9 @@ class Project:
                                       self.json_data['filtered']['ignore'][n]['title'],
                                       self.json_data['filtered']['ignore'][n]['cvssScore'],
                                       self.json_data['filtered']['ignore'][n]['identifiers']['CWE'],
-                                      self.json_data['filtered']['ignore'][n]['identifiers']['CVE']
+                                      self.json_data['filtered']['ignore'][n]['identifiers']['CVE'],
+                                      self.json_data['filtered']['ignore'][n]['name'],
+                                      self.json_data['filtered']['ignore'][n]['fixedIn']
                         )
                     )
         return vulnsSet

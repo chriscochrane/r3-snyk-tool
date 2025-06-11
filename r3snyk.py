@@ -113,7 +113,17 @@ def testProject(args : argparse.Namespace):
         print(f"        \"title\": \"{v.title}\",")
         print(f"        \"severity\": \"{v.severity}\",")
         print(f"        \"score\": \"{v.score}\",")
+        print(f"        \"name\": \"{v.name}\",")
         print(f"        \"url\": \"https://security.snyk.io/vuln/{v.id}\",")
+        # fixed-in is a list
+        print(f"        \"fixed\": [")
+        last_fix = len(v.fixed) - 1
+        for a, fx in enumerate(v.fixed):
+            if a == last_fix:
+                print(f"          \"{fx}\"")
+            else:
+                print(f"          \"{fx}\",")
+        print("        ],")
         # cwe is actually a list
         print(f"        \"cwe\": [")
         last_cwe = len(v.cwe) - 1
