@@ -6,6 +6,9 @@ import os
 import subprocess
 import sys
 import logging
+import secrets
+import string
+from datetime import datetime
 
 from enum import StrEnum
 from Waivers import Waivers
@@ -29,6 +32,32 @@ def _configure_logging(args :argparse.Namespace):
         null_handler = logging.NullHandler()
         logging.getLogger().addHandler(null_handler)
         logging.getLogger().setLevel(logging.NOTSET)
+
+def generate_unique_random_string(length: int = 24) -> str:
+    """
+    Generates a random and cryptographically secure unique string of a specified length.
+
+    The string is composed of uppercase letters, lowercase letters, digits,
+    and a selection of common punctuation characters.
+
+    Args:
+        length (int): The desired length of the string. Defaults to 24.
+
+    Returns:
+        str: A random, unique, and cryptographically secure string.
+    """
+    if not isinstance(length, int) or length <= 0:
+        raise ValueError("Length must be a positive integer.")
+
+    # Define the pool of characters to choose from
+    # This includes uppercase letters, lowercase letters, digits, and some common punctuation
+    characters = string.ascii_letters + string.digits
+
+    # Generate the string by repeatedly choosing a random character from the pool
+    # secrets.choice is used for cryptographic strength
+    random_string = ''.join(secrets.choice(characters) for _ in range(length))
+
+    return random_string
     
 def countWaivers(args : argparse.Namespace):
     waiver_manager = Waivers(filename=args.waivers)
@@ -102,6 +131,8 @@ def testProject(args : argparse.Namespace):
     waiveredVulns = snyk_manager.get_waivered_vulnerabilities()
 
     print("{")
+    print(f" \"id\": \"{generate_unique_random_string()}\",")
+    print(f" \"timestamp\": \"{datetime.now().astimezone().strftime('%Y%m%d-%H:%M:%S.%f')[:-3]}{datetime.now().astimezone().strftime('%z')}\",")
     print("  \"num\":", len(openVulns) + len(waiveredVulns), ",", sep='')
     print("  \"open\": {")
     print("    \"num\": ", len(openVulns), ",", sep='')
@@ -109,7 +140,8 @@ def testProject(args : argparse.Namespace):
     last = len(openVulns) - 1
     for i, v in enumerate(openVulns):
         print("      {")
-        print(f"        \"id\": \"{v.id}\",")
+        print(f"        \"id\": \"{generate_unique_random_string()}\",")
+        print(f"        \"snyk\": \"{v.id}\",")
         print(f"        \"title\": \"{v.title}\",")
         print(f"        \"severity\": \"{v.severity}\",")
         print(f"        \"score\": \"{v.score}\",")
@@ -166,7 +198,8 @@ def testProject(args : argparse.Namespace):
     last = len(waiveredVulns) - 1
     for i, v in enumerate(waiveredVulns):
         print("      {")
-        print(f"        \"id\": \"{v.id}\",")
+        print(f"        \"id\": \"{generate_unique_random_string()}\",")
+        print(f"        \"snyk\": \"{v.id}\",")
         print(f"        \"title\": \"{v.title}\",")
         print(f"        \"severity\": \"{v.severity}\"")
         # don't bother with paths here
