@@ -14,6 +14,8 @@ from enum import StrEnum
 from Waivers import Waivers
 from Snyk import Snyk
 from Vulnerability import Vulnerability
+from ScanReport import ScanReport
+
 
 # the supported commands
 class Command(StrEnum):
@@ -22,9 +24,10 @@ class Command(StrEnum):
     REMOVE = "rm",
     REDUNDANT = "red",
     REMOVE_REDUNDANT = "rmred",
-    SUMMARISE = "sum"
-    TEST = "test"
-
+    SUMMARISE = "sum",
+    TEST = "test",
+    REPORT = "rep"
+    
 def _configure_logging(args :argparse.Namespace):
     if args.verbose:
         logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -213,6 +216,47 @@ def testProject(args : argparse.Namespace):
     print("}")
 
 
+def processReport(args : argparse.Namespace):
+    if args.report is None:
+        raise Error("Report file not specified")
+    
+    # open and parse the report file
+    scan_report = ScanReport(args.report)
+
+    # set the match criteria
+    scan_report.set_criteria(args.match)
+
+    # get the matching vulns
+    matches = scan_report.get_matches()
+
+    # print the info
+    last_vuln = len(matches) - 1
+
+    print("{")
+    print(f"  \"num\": \"{len(matches)}\",")
+    print("  \"matches\": [")
+
+    for index, (id, vuln) in enumerate(matches.items()):
+        print("    {")
+        # TBD - let the user dictate the output fields
+        print(f"      \"id\": \"{id}\",")
+        print(f"      \"snyk\": \"{vuln.id}\",")
+        print(f"      \"cve\": \"{vuln.cve}\"")
+
+        if index == last_vuln:
+            print("    }")
+        else:
+            print("    },")
+
+    print("  ]")
+    print("}")
+        
+
+
+
+
+
+
 
 def _getRedundantIDs(waiver_manager: Waivers,snyk_manager: Snyk) -> list:
     # IDs in the waivers file
@@ -383,6 +427,20 @@ def main():
                                 default=None, 
                                 help='Vulnerability paths to include vulnerabilities for.')
 
+    # report processing
+    rep_parser = subparsers.add_parser(Command.REPORT, help='Filter/process a vulnerability report')
+    rep_parser.add_argument('-v', '--verbose', 
+                                action='store_true', 
+                                help='Output informational messages during processing.')
+    rep_parser.add_argument('-r', '--report', 
+                                default=None, 
+                                help='Path to report file')
+    rep_parser.add_argument('-m', '--match', 
+                                default=None, 
+                                help='Criteria to match')
+
+
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -409,6 +467,9 @@ def main():
 
     elif args.command == Command.TEST:
         testProject(args)
+
+    elif args.command == Command.REPORT:
+        processReport(args)
 
 if __name__ == '__main__':
     main()
