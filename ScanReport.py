@@ -83,7 +83,7 @@ class ScanReport:
                 title = self.json_data['open']['vulnerabilities'][n]['title']
                 score = self.json_data['open']['vulnerabilities'][n]['score']
                 cwe = self.json_data['open']['vulnerabilities'][n]['cwe']
-                cve = self.json_data['open']['vulnerabilities'][n]['cwe']
+                cve = self.json_data['open']['vulnerabilities'][n]['cve']
                 name = self.json_data['open']['vulnerabilities'][n]['name']
                 fixed = self.json_data['open']['vulnerabilities'][n]['fixed']
 
