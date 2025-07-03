@@ -113,15 +113,13 @@ def summariseProject(args : argparse.Namespace):
     (openCrit,openHigh,openMed,openLow) = _categoriseVulnerabilities(openVulns)
     (waiveredCrit,waiveredHigh,waiveredMed,waiveredLow) = _categoriseVulnerabilities(waiveredVulns)
 
-    # output the counts as delimited data
-    # TBD make it look nicer/human-readable?
-    print(f"All,{len(allCrit)},{len(allHigh)},{len(allMed)},{len(allLow)}")
-    print(f"Waiv,{len(waiveredCrit)},{len(waiveredHigh)},{len(waiveredMed)},{len(waiveredLow)}")
-    print(f"Open,{len(openCrit)},{len(openHigh)},{len(openMed)},{len(openLow)}")
+    # output the counts as crit,high,medium,low (total)
+    print(f"All,{len(allCrit)},{len(allHigh)},{len(allMed)},{len(allLow)} ({len(allCrit)+len(allHigh)+len(allMed)+len(allLow)})")
+    print(f"Waiv,{len(waiveredCrit)},{len(waiveredHigh)},{len(waiveredMed)},{len(waiveredLow)} ({len(waiveredCrit)+len(waiveredHigh)+len(waiveredMed)+len(waiveredLow)})")
+    print(f"Open,{len(openCrit)},{len(openHigh)},{len(openMed)},{len(openLow)} ({len(openCrit)+len(openHigh)+len(openMed)+len(openLow)})")
 
 
 def testProject(args : argparse.Namespace):
-
     # the 'include' arg is a delimited list of projects to be specifically included in the summary
     projects_list = None
     if args.include:
@@ -222,16 +220,13 @@ def processReport(args : argparse.Namespace):
     
     # open and parse the report file
     scan_report = ScanReport(args.report)
-
     # set the match criteria
     scan_report.set_criteria(args.match)
-
     # get the matching vulns
     matches = scan_report.get_matches()
 
     # print the info
     last_vuln = len(matches) - 1
-
     print("{")
     print(f"  \"num\": \"{len(matches)}\",")
     print("  \"matches\": [")
@@ -251,12 +246,6 @@ def processReport(args : argparse.Namespace):
     print("  ]")
     print("}")
         
-
-
-
-
-
-
 
 def _getRedundantIDs(waiver_manager: Waivers,snyk_manager: Snyk) -> list:
     # IDs in the waivers file
