@@ -150,22 +150,36 @@ class Snyk:
         self.is_tested = True
 
 
-    # collect the open (i.we. unresolved) vulnerabilities
+    # collect the open (i.e. unresolved) vulnerabilities
     def get_open_vulnerabilities(self,match_path) -> set:
         self._run_test()
         vulnsSet = set()
+        vulnsLookup = {}
+
         # collect the open vulns for all scanned projects
         for p in self.scanned_projects.values():
             project_vulns = p.get_open_vulnerabilities(match_path)
-            vulnsSet.update(project_vulns)
+            for pv in project_vulns:
+                # a single vuln can be reported from multiple projects, so
+                # be sure to collapse paths for the same vuln/different projects
+                # into the same vuln item
+                if pv.id in vulnsLookup:
+                    # a known vuln; merge together
+                    existingVuln = vulnsLookup[pv.id]
+                    existingVuln.merge_with(pv)
+                else:
+                    # new vuln; just add it
+                    vulnsSet.add(pv)
+                    vulnsLookup[pv.id] = pv
 
         return vulnsSet
 
-
+    # collect the waivered vulnerabilities
     def get_waivered_vulnerabilities(self) -> set:
         self._run_test()
         vulnsSet = set()
         # collect the waivered vulns for all scanned projects
+        # don't really care about same waiver in multiple projects, the waiver is the waiver
         for p in self.scanned_projects.values():
             project_vulns = p.get_waivered_vulnerabilities()
             vulnsSet.update(project_vulns)           
