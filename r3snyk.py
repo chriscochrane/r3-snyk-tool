@@ -15,6 +15,7 @@ from Waivers import Waivers
 from Snyk import Snyk
 from Vulnerability import Vulnerability
 from ScanReport import ScanReport
+from ScanConfiguration import ScanConfiguration
 
 
 # the supported commands
@@ -26,7 +27,8 @@ class Command(StrEnum):
     REMOVE_REDUNDANT = "rmred",
     SUMMARISE = "sum",
     TEST = "test",
-    REPORT = "rep"
+    REPORT = "rep",
+    SCANSLIST = "slist"
     
 def _configure_logging(args :argparse.Namespace):
     if args.verbose:
@@ -245,6 +247,24 @@ def processReport(args : argparse.Namespace):
 
     print("  ]")
     print("}")
+
+def listScans(args : argparse.Namespace) :
+    scan_config = ScanConfiguration()
+    scans = scan_config.get_scan_names()
+    last_scan = len(scans) - 1
+
+    print("{")
+    print(f"  \"num\": \"{len(scans)}\",")
+    print("  \"scans\": [")
+
+    for index, sName in enumerate(scans):
+        if index == last_scan:
+            print(f"      \"{sName}\"")
+        else:
+            print(f"      \"{sName}\",")
+    print("  ]")
+    print("}")
+
         
 
 def _getRedundantIDs(waiver_manager: Waivers,snyk_manager: Snyk) -> list:
@@ -428,7 +448,13 @@ def main():
                                 default=None, 
                                 help='Criteria to match')
 
-
+    #
+    # List the scans that are configured
+    #
+    scans_list_parser = subparsers.add_parser(Command.SCANSLIST, help='List the configured scans')
+    scans_list_parser.add_argument('-v', '--verbose', 
+                                action='store_true', 
+                                help='Output informational messages during processing.')
 
     # Parse arguments
     args = parser.parse_args()
@@ -459,6 +485,9 @@ def main():
 
     elif args.command == Command.REPORT:
         processReport(args)
+
+    elif args.command == Command.SCANSLIST:
+        listScans(args)
 
 if __name__ == '__main__':
     main()
