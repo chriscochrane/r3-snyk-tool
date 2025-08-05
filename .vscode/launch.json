@@ -13,7 +13,8 @@
             "args": [
                 "test",
                 "-n", "cenm-appeng-auth",
-                "-v"
+                "-v",
+                "--csv"
             ]
         }
     ]

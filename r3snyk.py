@@ -121,18 +121,7 @@ def summariseProject(args : argparse.Namespace):
     print(f"Open,{len(openCrit)},{len(openHigh)},{len(openMed)},{len(openLow)} ({len(openCrit)+len(openHigh)+len(openMed)+len(openLow)})")
 
 
-def testProject(args : argparse.Namespace):
-    # the 'include' arg is a delimited list of projects to be specifically included in the summary
-    projects_list = None
-    if args.include:
-        projects_list = set(args.include.split(","))
-
-    snyk_manager = Snyk(project_dir=args.project,user_projects=projects_list,scan_type=args.type,scan_name=args.name)
-    
-    # get the open and waivered vulns
-    openVulns = snyk_manager.get_open_vulnerabilities(match_path=args.match)
-    waiveredVulns = snyk_manager.get_waivered_vulnerabilities()
-
+def print_as_json(openVulns, waiveredVulns):
     print("{")
     print(f" \"id\": \"{generate_unique_random_string()}\",")
     print(f" \"timestamp\": \"{datetime.now().astimezone().strftime('%Y%m%d-%H:%M:%S.%f')[:-3]}{datetime.now().astimezone().strftime('%z')}\",")
@@ -214,6 +203,34 @@ def testProject(args : argparse.Namespace):
     print("    ]")  
     print("  }")
     print("}")
+
+def print_as_csv(openVulns, waiveredVulns):
+    print("# open")
+    for i, v in enumerate(openVulns):
+        if v.cve:
+            for cve_id in v.cve:
+                print(f"{i},{cve_id},{v.id},{v.severity},{v.name},{v.title}")
+        else:
+            for cwe_id in v.cwe:
+                print(f"{i},{cwe_id},{v.id},{v.severity},{v.name},{v.title}")
+
+
+def testProject(args : argparse.Namespace):
+    # the 'include' arg is a delimited list of projects to be specifically included in the summary
+    projects_list = None
+    if args.include:
+        projects_list = set(args.include.split(","))
+
+    snyk_manager = Snyk(project_dir=args.project,user_projects=projects_list,scan_type=args.type,scan_name=args.name)
+    
+    # get the open and waivered vulns
+    openVulns = snyk_manager.get_open_vulnerabilities(match_path=args.match)
+    waiveredVulns = snyk_manager.get_waivered_vulnerabilities()
+
+    if args.csv:
+        print_as_csv(openVulns, waiveredVulns)
+    else:
+        print_as_json(openVulns, waiveredVulns)
 
 
 def processReport(args : argparse.Namespace):
@@ -398,6 +415,9 @@ def main():
     test_parser.add_argument('-v', '--verbose', 
                                 action='store_true', 
                                 help='Output informational messages during processing.')
+    test_parser.add_argument('-c', '--csv', 
+                                action='store_true', 
+                                help='Output the results in CSV format.')
     test_parser.add_argument('-m', '--match', 
                                 default=None, 
                                 help='Vulnerability paths to include vulnerabilities for.')
