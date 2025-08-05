@@ -11,6 +11,8 @@ from ScanConfiguration import ScanConfiguration
 class Snyk:
     def __init__(self, project_dir=None, user_projects=None, scan_type=None, scan_name=None):
 
+        self.buildfile = "build.gradle"
+
         # read stuff out of the scan configuration, if one was specified
         # (and it is a recognised name)
         if scan_name:
@@ -20,6 +22,11 @@ class Snyk:
                 self.scan_type = scan_config.get_scan_property(scan_name,"type")
                 self.user_projects = scan_config.get_scan_property(scan_name,"sub-projects")
                 self.project_mapping = scan_config.get_scan_property(scan_name,"project-mapping")
+
+                if scan_config.has_scan_property(scan_name,"buildfile"):
+                    self.buildfile = scan_config.get_scan_property(scan_name,"buildfile")
+                    if not self.buildfile:
+                        self.buildfile = "build.gradle"
             else:
                 logging.error(f"Scan [{scan_name}] not found")
 
@@ -59,7 +66,8 @@ class Snyk:
         logging.info(f"Discovering Gradle projects in [{self.project_dir}]")
         try:
             # find all build.gradles, get their dir path
-            command = ["find", self.project_dir, "-type", "f", "-name", "build.gradle", "-exec", "dirname", "{}", ";"]
+            command = ["find", self.project_dir, "-type", "f", "-name", self.buildfile, "-exec", "dirname", "{}", ";"]
+            logging.info(f"Running [{" ".join(command)}]")
             process = subprocess.run(command, capture_output=True, text=True, check=True)
             output = process.stdout.strip()
             if output:

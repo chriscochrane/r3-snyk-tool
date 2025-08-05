@@ -41,6 +41,9 @@ class ScanConfiguration:
         else:
             return False
 
+    def has_scan_property(self, scan_name, property_name):
+        return property_name in self.json_data["scans"][scan_name]
+
     def get_scan_property(self, scan_name, property_name):
         return self.json_data["scans"][scan_name][property_name]
 

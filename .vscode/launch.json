@@ -11,9 +11,9 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "rep",
-                "-r", "/Users/chris.cochrane/dev/git/corda/release-pack-generation/vulns/ent-410-p4.json",
-                "-m" ,"score:3.7"
+                "test",
+                "-n", "cenm-appeng-auth",
+                "-v"
             ]
         }
     ]
