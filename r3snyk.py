@@ -205,14 +205,14 @@ def print_as_json(openVulns, waiveredVulns):
     print("}")
 
 def print_as_csv(openVulns, waiveredVulns):
-    print("# open")
+    print("Num,CVE,SNYK,Sev,Where,Title,Requires")
     for i, v in enumerate(openVulns):
         if v.cve:
             for cve_id in v.cve:
-                print(f"{i},{cve_id},{v.id},{v.severity},{v.name},{v.title}")
+                print(f"{i},{cve_id},{v.id},{v.severity},{v.name},{v.title},{' or '.join([str(x) for x in v.fixed])}")
         else:
             for cwe_id in v.cwe:
-                print(f"{i},{cwe_id},{v.id},{v.severity},{v.name},{v.title}")
+                print(f"{i},{cwe_id},{v.id},{v.severity},{v.name},{v.title},{' or '.join([str(x) for x in v.fixed])}")
 
 
 def testProject(args : argparse.Namespace):
