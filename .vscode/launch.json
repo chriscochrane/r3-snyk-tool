@@ -12,9 +12,8 @@
             "console": "integratedTerminal",
             "args": [
                 "test",
-                "-n", "cenm-appeng-auth",
-                "-v",
-                "--csv"
+                "-n", "cenm-appeng-auth-relpack",
+                "-v"
             ]
         }
     ]

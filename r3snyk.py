@@ -122,87 +122,48 @@ def summariseProject(args : argparse.Namespace):
 
 
 def print_as_json(openVulns, waiveredVulns):
-    print("{")
-    print(f" \"id\": \"{generate_unique_random_string()}\",")
-    print(f" \"timestamp\": \"{datetime.now().astimezone().strftime('%Y%m%d-%H:%M:%S.%f')[:-3]}{datetime.now().astimezone().strftime('%z')}\",")
-    print("  \"num\":", len(openVulns) + len(waiveredVulns), ",", sep='')
-    print("  \"open\": {")
-    print("    \"num\": ", len(openVulns), ",", sep='')
-    print("    \"vulnerabilities\": [")
-    last = len(openVulns) - 1
-    for i, v in enumerate(openVulns):
-        print("      {")
-        print(f"        \"id\": \"{generate_unique_random_string()}\",")
-        print(f"        \"snyk\": \"{v.id}\",")
-        print(f"        \"title\": \"{v.title}\",")
-        print(f"        \"severity\": \"{v.severity}\",")
-        print(f"        \"score\": \"{v.score}\",")
-        print(f"        \"name\": \"{v.name}\",")
-        print(f"        \"url\": \"https://security.snyk.io/vuln/{v.id}\",")
-        # fixed-in is a list
-        print(f"        \"fixed\": [")
-        last_fix = len(v.fixed) - 1
-        for a, fx in enumerate(v.fixed):
-            if a == last_fix:
-                print(f"          \"{fx}\"")
-            else:
-                print(f"          \"{fx}\",")
-        print("        ],")
-        # cwe is actually a list
-        print(f"        \"cwe\": [")
-        last_cwe = len(v.cwe) - 1
-        for k, cwe in enumerate(v.cwe):
-            if k == last_cwe:
-                print(f"          \"{cwe}\"")
-            else:
-                print(f"          \"{cwe}\",")
-        print("        ],")
-        # cwe is actually a list as well
-        print(f"        \"cve\": [")
-        last_cve = len(v.cve) - 1
-        for m, cve in enumerate(v.cve):
-            if m == last_cve:
-                print(f"          \"{cve}\"")
-            else:
-                print(f"          \"{cve}\",")
-        print("        ],")
-        # paths is a list of lists (paths, and path-elements)
-        print(f"        \"paths\": [")
-        last_path = len(v.paths) - 1
+    json_doc = {}
+    json_doc["id"] = generate_unique_random_string()
+    json_doc["timestamp"] = f"{datetime.now().astimezone().strftime('%Y%m%d-%H:%M:%S.%f')[:-3]}{datetime.now().astimezone().strftime('%z')}"
+    json_doc["num"] = len(openVulns) + len(waiveredVulns)
+    json_doc["open"] = {}
+    json_doc["open"]["num"] = len(openVulns)
+    json_doc["open"]["vulnerabilities"] = []
+
+    for v in openVulns:
+        vuln_doc = {}
+        vuln_doc["id"] = generate_unique_random_string()
+        vuln_doc["snyk"] = v.id
+        vuln_doc["title"] = v.title
+        vuln_doc["severity"] = v.severity
+        vuln_doc["score"] = v.score
+        vuln_doc["name"] = v.name
+        vuln_doc["url"] = f"https://security.snyk.io/vuln/{v.id}"
+        vuln_doc["fixed"] = v.fixed
+        vuln_doc["cwe"] = v.cwe
+        vuln_doc["cve"] = v.cve
+        paths_list = []
         for j, path in enumerate(v.paths):
             path_to_print = " > ".join(path)
-            if j == last_path:
-                print(f"          \"{path_to_print}\"")
-            else:
-                print(f"          \"{path_to_print}\",")
-        print("        ]")  # last vuln element so no trailing comma here
-        
-        if i == last:
-            print("      }")
-        else:
-            print("      },")
-        
-    print("    ]")  
-    print("  },")
-    print("  \"waivered\": {")
-    print("    \"num\": ", len(waiveredVulns), ",", sep='')
-    print("    \"vulnerabilities\": [")
-    last = len(waiveredVulns) - 1
-    for i, v in enumerate(waiveredVulns):
-        print("      {")
-        print(f"        \"id\": \"{generate_unique_random_string()}\",")
-        print(f"        \"snyk\": \"{v.id}\",")
-        print(f"        \"title\": \"{v.title}\",")
-        print(f"        \"severity\": \"{v.severity}\"")
-        # don't bother with paths here
-        if i == last:
-            print("      }")
-        else:
-            print("      },")
-        
-    print("    ]")  
-    print("  }")
-    print("}")
+            paths_list.append(path_to_print)
+        vuln_doc["paths"] = paths_list
+        json_doc["open"]["vulnerabilities"].append(vuln_doc)
+
+    json_doc["waivered"] = {}
+    json_doc["waivered"]["num"] = len(waiveredVulns)
+    json_doc["waivered"]["vulnerabilities"] = []
+    for v in waiveredVulns:
+        vuln_doc = {}
+        vuln_doc["id"] = generate_unique_random_string()
+        vuln_doc["snyk"] = v.id
+        vuln_doc["title"] = v.title
+        vuln_doc["severity"] = v.severity
+        json_doc["waivered"]["vulnerabilities"].append(vuln_doc)
+
+    # TBD hook in the original Snyk JSON data here (one for each project), for reference
+
+    print(json.dumps(json_doc, indent=2))
+
 
 def print_as_csv(openVulns, waiveredVulns):
     print("Num,CVE,SNYK,Sev,Where,Title,Requires")
@@ -244,46 +205,32 @@ def processReport(args : argparse.Namespace):
     # get the matching vulns
     matches = scan_report.get_matches()
 
+    # build the info
+    json_doc = {}
+    json_doc["num"] = len(matches)
+    json_doc["matches"] = []
+    for (id, vuln) in matches.items():
+        vuln_doc = {}
+        vuln_doc["id"] = id
+        vuln_doc["snyk"] = vuln.id
+        vuln_doc["cve"] = vuln.cve
+        json_doc["matches"].append(vuln_doc)
     # print the info
-    last_vuln = len(matches) - 1
-    print("{")
-    print(f"  \"num\": \"{len(matches)}\",")
-    print("  \"matches\": [")
-
-    for index, (id, vuln) in enumerate(matches.items()):
-        print("    {")
-        # TBD - let the user dictate the output fields
-        print(f"      \"id\": \"{id}\",")
-        print(f"      \"snyk\": \"{vuln.id}\",")
-        print(f"      \"cve\": \"{vuln.cve}\"")
-
-        if index == last_vuln:
-            print("    }")
-        else:
-            print("    },")
-
-    print("  ]")
-    print("}")
+    print(json.dumps(json_doc, indent=2))
 
 def listScans(args : argparse.Namespace) :
     scan_config = ScanConfiguration()
     scans = scan_config.get_scan_names()
-    last_scan = len(scans) - 1
 
-    print("{")
-    print(f"  \"num\": \"{len(scans)}\",")
-    print("  \"scans\": [")
-
-    for index, sName in enumerate(scans):
-        if index == last_scan:
-            print(f"      \"{sName}\"")
-        else:
-            print(f"      \"{sName}\",")
-    print("  ]")
-    print("}")
+    json_doc = {}
+    json_doc["num"] = len(scans)
+    json_doc["scans"] = []
+    for sName in scans:
+        json_doc["scans"].append(sName)
+    
+    print(json.dumps(json_doc, indent=2))
 
         
-
 def _getRedundantIDs(waiver_manager: Waivers,snyk_manager: Snyk) -> list:
     # IDs in the waivers file
     waivers = waiver_manager.list_ids()
