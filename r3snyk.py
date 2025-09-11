@@ -6,10 +6,10 @@ import os
 import subprocess
 import sys
 import logging
-import secrets
 import string
-from datetime import datetime
+import secrets
 
+from datetime import datetime
 from enum import StrEnum
 from Waivers import Waivers
 from Snyk import Snyk
@@ -29,7 +29,8 @@ class Command(StrEnum):
     TEST = "test",
     REPORT = "rep",
     SCANSLIST = "slist"
-    
+
+
 def _configure_logging(args :argparse.Namespace):
     if args.verbose:
         logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -38,31 +39,6 @@ def _configure_logging(args :argparse.Namespace):
         logging.getLogger().addHandler(null_handler)
         logging.getLogger().setLevel(logging.NOTSET)
 
-def generate_unique_random_string(length: int = 24) -> str:
-    """
-    Generates a random and cryptographically secure unique string of a specified length.
-
-    The string is composed of uppercase letters, lowercase letters, digits,
-    and a selection of common punctuation characters.
-
-    Args:
-        length (int): The desired length of the string. Defaults to 24.
-
-    Returns:
-        str: A random, unique, and cryptographically secure string.
-    """
-    if not isinstance(length, int) or length <= 0:
-        raise ValueError("Length must be a positive integer.")
-
-    # Define the pool of characters to choose from
-    # This includes uppercase letters, lowercase letters, digits, and some common punctuation
-    characters = string.ascii_letters + string.digits
-
-    # Generate the string by repeatedly choosing a random character from the pool
-    # secrets.choice is used for cryptographic strength
-    random_string = ''.join(secrets.choice(characters) for _ in range(length))
-
-    return random_string
     
 def countWaivers(args : argparse.Namespace):
     waiver_manager = Waivers(filename=args.waivers)
@@ -120,10 +96,34 @@ def summariseProject(args : argparse.Namespace):
     print(f"Waiv,{len(waiveredCrit)},{len(waiveredHigh)},{len(waiveredMed)},{len(waiveredLow)} ({len(waiveredCrit)+len(waiveredHigh)+len(waiveredMed)+len(waiveredLow)})")
     print(f"Open,{len(openCrit)},{len(openHigh)},{len(openMed)},{len(openLow)} ({len(openCrit)+len(openHigh)+len(openMed)+len(openLow)})")
 
+def _generate_unique_random_string(length: int = 24) -> str:
+    """
+    Generates a random and cryptographically secure unique string of a specified length.
 
-def print_as_json(openVulns, waiveredVulns):
+    The string is composed of uppercase letters, lowercase letters, digits,
+    and a selection of common punctuation characters.
+
+    Args:
+        length (int): The desired length of the string. Defaults to 24.
+
+    Returns:
+        str: A random, unique, and cryptographically secure string.
+    """
+    if not isinstance(length, int) or length <= 0:
+        raise ValueError("Length must be a positive integer.")
+
+    # Define the pool of characters to choose from
+    # This includes uppercase letters, lowercase letters, digits, and some common punctuation
+    characters = string.ascii_letters + string.digits
+    # Generate the string by repeatedly choosing a random character from the pool
+    # secrets.choice is used for cryptographic strength
+    random_string = ''.join(secrets.choice(characters) for _ in range(length))
+    return random_string
+
+
+def print_as_json(scan_timestamp, openVulns, waiveredVulns):
     json_doc = {}
-    json_doc["id"] = generate_unique_random_string()
+    json_doc["id"] = _generate_unique_random_string()
     json_doc["timestamp"] = f"{datetime.now().astimezone().strftime('%Y%m%d-%H:%M:%S.%f')[:-3]}{datetime.now().astimezone().strftime('%z')}"
     json_doc["num"] = len(openVulns) + len(waiveredVulns)
     json_doc["open"] = {}
@@ -132,7 +132,7 @@ def print_as_json(openVulns, waiveredVulns):
 
     for v in openVulns:
         vuln_doc = {}
-        vuln_doc["id"] = generate_unique_random_string()
+        vuln_doc["id"] = _generate_unique_random_string()
         vuln_doc["snyk"] = v.id
         vuln_doc["title"] = v.title
         vuln_doc["severity"] = v.severity
@@ -154,7 +154,7 @@ def print_as_json(openVulns, waiveredVulns):
     json_doc["waivered"]["vulnerabilities"] = []
     for v in waiveredVulns:
         vuln_doc = {}
-        vuln_doc["id"] = generate_unique_random_string()
+        vuln_doc["id"] = _generate_unique_random_string()
         vuln_doc["snyk"] = v.id
         vuln_doc["title"] = v.title
         vuln_doc["severity"] = v.severity
@@ -191,7 +191,7 @@ def testProject(args : argparse.Namespace):
     if args.csv:
         print_as_csv(openVulns, waiveredVulns)
     else:
-        print_as_json(openVulns, waiveredVulns)
+        print_as_json(snyk_manager.scan_timestamp, openVulns, waiveredVulns)
 
 
 def processReport(args : argparse.Namespace):

@@ -32,6 +32,7 @@ class Project:
             else:
                 self.vuln_index[id] = Vulnerability(id, sev, title, score, cwe, cve, name, fixed, path)
 
+    # decide if a vuln should be added to the report, based on what paths where specified at the command line.
     def _should_add_vuln(self,match_path,vuln):
         add_vuln = False
         if not match_path:
@@ -99,5 +100,9 @@ class Project:
                         )
                     )
         return vulnsSet
+
+    def get_snyk_json_report(self):
+        return self.json_data
+
 
     
