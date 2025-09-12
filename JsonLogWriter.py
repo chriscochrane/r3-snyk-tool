@@ -42,7 +42,6 @@ class JsonLogWriter:
                 # json.dump() serializes the dictionary to a file object.
                 # indent=4 makes the JSON file human-readable.
                 json.dump(data, f, indent=4)
-            print(f"Successfully wrote data to {full_path}")
             return True
         except IOError as e:
             print(f"Error writing to file {full_path}: {e}", file=sys.stderr)

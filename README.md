@@ -58,18 +58,18 @@ A combination of `rm` nd `red` commands - identify the redundant waivers and rem
 ### sum
 Perform a Snyk scan on the project and output a summary of the critical, high, medium, and low-severity vulnerabilities that were found. An example of the output from this command is:
 
-`All,9,100,85,17`
+`All,9,100,85,17 (211)`
 
-`Waiv,3,21,31,12`
+`Waiv,3,21,31,12 (67)`
 
-`Open,6,79,54,5`
+`Open,6,79,54,5 (144)`
 
 The `All` line indicates how many critical, high, medium, and low severity issues were found in total.
 The `Waiv` line indicates how many critical, high, medium, and low severity issues were waivered.
 The `Open` line indicates how many critical, high, medium, and low severity issues remain open, and need to be addressed (either by updating the project, or adding more waivers).
 
 ### test
-TBD
+Perform a Snyk test on the project/sub-projects and generate a JSON report describing the vulnerabilities found.
 
 
 ## Scan Configurations
