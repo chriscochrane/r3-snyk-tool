@@ -2,7 +2,6 @@ import subprocess
 import json
 import os
 import sys
-import shutil
 import logging
 from JsonLogWriter import JsonLogWriter
 from Project import Project
@@ -16,10 +15,9 @@ class Snyk:
     def __init__(self, project_dir=None, user_projects=None, scan_type=None, scan_name=None):
 
         self.buildfile = "build.gradle"
-        self.scan_timestamp = f"{datetime.now().astimezone().strftime('%Y%m%d-%H:%M:%S.%f')[:-3]}{datetime.now().astimezone().strftime('%z')}"
+        self.scan_timestamp = f"{datetime.now().strftime('%Y%m%d-%H%M%S%f')[:-4]}"
         self.log_path = ""
         self.base_path = ""
-
 
         # read stuff out of the scan configuration, if one was specified
         # (and it is a recognised name)
@@ -161,6 +159,8 @@ class Snyk:
         if not projects_to_scan:
             logging.info("No projects to scan.")
             return
+
+        jsonLogger = JsonLogWriter(self.log_path)
         
         for p in projects_to_scan:
             # Run actual Snyk test with specified options
@@ -204,12 +204,10 @@ class Snyk:
                 new_project = Project(p, json_data)
                 self.scanned_projects[p] = new_project
 
-                writer = JsonLogWriter(self.log_path)
-                writer.write_to_file(p,json_data)
+                jsonLogger.write_to_file(p,json_data)
 
         # finally compress the log dir
-        shutil.make_archive(self.log_path, 'zip', self.log_path)
-        shutil.rmtree(self.log_path)
+        jsonLogger.compress()
         
         self.is_tested = True
 

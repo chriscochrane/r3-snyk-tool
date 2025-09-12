@@ -124,7 +124,7 @@ def _generate_unique_random_string(length: int = 24) -> str:
 def print_as_json(scan_timestamp, openVulns, waiveredVulns):
     json_doc = {}
     json_doc["id"] = _generate_unique_random_string()
-    json_doc["timestamp"] = f"{datetime.now().astimezone().strftime('%Y%m%d-%H:%M:%S.%f')[:-3]}{datetime.now().astimezone().strftime('%z')}"
+    json_doc["timestamp"] = scan_timestamp
     json_doc["num"] = len(openVulns) + len(waiveredVulns)
     json_doc["open"] = {}
     json_doc["open"]["num"] = len(openVulns)

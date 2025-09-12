@@ -1,6 +1,7 @@
 import os
 import json
 import sys
+import shutil
 
 class JsonLogWriter:
     """
@@ -46,4 +47,12 @@ class JsonLogWriter:
         except IOError as e:
             print(f"Error writing to file {full_path}: {e}", file=sys.stderr)
             return False
+
+
+    def compress(self):
+        parent_dir = os.path.dirname(self.log_path)
+        dir_name = os.path.basename(self.log_path)
+        output_zip_path = os.path.join(parent_dir, dir_name)
+        shutil.make_archive(output_zip_path, 'zip', root_dir=parent_dir, base_dir=dir_name)
+        shutil.rmtree(self.log_path)
 
