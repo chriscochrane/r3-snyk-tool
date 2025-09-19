@@ -34,6 +34,9 @@ class JsonLogWriter:
             bool: True if the write operation was successful, False otherwise.
         """
         # Create the full path to the file.
+        if filename == "":
+            filename = "project-root"
+            
         full_path = os.path.join(self.log_path, f"{filename}.json")
         
         try:
