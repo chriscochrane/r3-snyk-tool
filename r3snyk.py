@@ -192,7 +192,7 @@ def testProject(args : argparse.Namespace):
     if openVulns:
         # if the config exists, create a jira api using the current git branch; the connection info comes from env vars
         # use it to attach Jira ticket IDs to the open vulnerabilities
-        if "JIRA_SERVER" not in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
+        if "JIRA_SERVER" in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
             # get the open jiras that are for this branch
             jira_query = JiraQuery( os.environ["JIRA_SERVER"],
                                     os.environ["JIRA_USER"],
