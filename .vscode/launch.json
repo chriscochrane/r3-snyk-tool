@@ -11,10 +11,11 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "jlist",
+                "test",
                 "-n",
                 "ent-relpack",
-                "-v"
+                "-v",
+                "--csv"
             ]
         }
     ]
