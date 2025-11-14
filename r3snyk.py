@@ -234,34 +234,40 @@ def listScans(args : argparse.Namespace) :
 
 # list the open Jira tickets affecting the current project
 def listJiras(args : argparse.Namespace) :
-    # figure out the current project/version from the current git branch
-    curr_branch = _get_current_git_branch("/Users/chris.cochrane/dev/git/corda/release-pack-generation")
-    # create a jira api using the current git branch; the connection info comes from env vars
-    if "JIRA_SERVER" not in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
-        print(f"JIRA_SERVER, JIRA_USER and JIRA_API_TOKEN must all be set in the environment in order to access Jira")
-        return
-    jira_query = JiraQuery( os.environ["JIRA_SERVER"],
-                            os.environ["JIRA_USER"],
-                            os.environ["JIRA_API_TOKEN"])
-    
-    # get the filter to use - require this so as not to issue stupid queries
     jira_filter = None
+    project_dir = "."
+
     scan_name = args.name
     if scan_name != None:
         scan_config = ScanConfiguration()
         if scan_config.has_scan(scan_name):
+            # get the filter to use - require this so as not to issue stupid queries
             if scan_config.has_scan_property(scan_name, "jira_filter_id"):
                 jira_filter = scan_config.get_scan_property(scan_name, "jira_filter_id")
+            # get the project root dir, so the git branch can be found
+            if scan_config.has_scan_property(scan_name, "root"):
+                project_dir = scan_config.get_scan_property(scan_name, "root")
         else:
             print(f"Scan [{scan_name}] not known")
-    
-    # get the open jiras
+
     if jira_filter == None:
         print("No filter specified and so not going to query Jira")
-    else:
-        # find open issues and ones that are for this branch
-        query_text = f"filter = {jira_filter} AND status = Backlog AND summary ~ '{curr_branch}'"
-        jira_ids = jira_query.query(query_text)
+        return
+
+    # figure out the current project/version from the current git branch
+    curr_branch = _get_current_git_branch(project_dir)
+
+    # create a jira api using the current git branch; the connection info comes from env vars
+    if "JIRA_SERVER" not in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
+        print(f"JIRA_SERVER, JIRA_USER and JIRA_API_TOKEN must all be set in the environment in order to access Jira")
+        return
+
+    # get the open jiras that are for this branch
+    jira_query = JiraQuery( os.environ["JIRA_SERVER"],
+                            os.environ["JIRA_USER"],
+                            os.environ["JIRA_API_TOKEN"])
+    query_text = f"filter = {jira_filter} AND status = Backlog AND summary ~ '{curr_branch}'"
+    jira_ids = jira_query.query(query_text)
 
     # list them as a jira doc
     json_doc = {}
