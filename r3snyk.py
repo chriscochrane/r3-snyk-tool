@@ -29,7 +29,8 @@ class Command(StrEnum):
     TEST = "test",
     REPORT = "rep",
     SCANSLIST = "slist",
-    JIRALIST = "jlist"
+    JIRALIST = "jlist",
+    JIRA_MARKASDONE = "jmad"
 
 
 def _configure_logging(args :argparse.Namespace):
@@ -245,7 +246,6 @@ def listScans(args : argparse.Namespace) :
 
 # list the open Jira tickets affecting the current project
 def listJiras(args : argparse.Namespace) :
-
     # create a jira api using the current git branch; the connection info comes from env vars
     if "JIRA_SERVER" not in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
         print(f"JIRA_SERVER, JIRA_USER and JIRA_API_TOKEN must all be set in the environment in order to access Jira")
@@ -267,6 +267,15 @@ def listJiras(args : argparse.Namespace) :
     
     print(json.dumps(json_doc, indent=2))
     
+
+def jiraMarkAsDone(args : argparse.Namespace) :
+    ticket_ids = [ t.strip() for t in args.ids.split(',') if t.strip() ]
+    
+    jira_query = JiraQuery( os.environ["JIRA_SERVER"],
+                            os.environ["JIRA_USER"],
+                            os.environ["JIRA_API_TOKEN"],
+                            args.name)
+    jira_query.mark_as_done(ticket_ids)
 
 
 def _getRedundantIDs(waiver_manager: Waivers,snyk_manager: Snyk) -> list:
@@ -470,6 +479,19 @@ def main():
                                 default=None, 
                                 help='The scan name to use for executing the snyk test.')
 
+    # list open jira items for this branch
+    jmad_parser = subparsers.add_parser(Command.JIRA_MARKASDONE, help='Mark Jira tickets for this project as Done')
+    jmad_parser.add_argument('-v', '--verbose', 
+                                action='store_true', 
+                                help='Output informational messages during processing.')
+    jmad_parser.add_argument('-n', '--name', 
+                                default=None, 
+                                help='The scan name to use for executing the snyk test.')
+    jmad_parser.add_argument('-i', '--ids', 
+                                default=None, 
+                                required=True,
+                                help='List of Jira IDs')
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -505,6 +527,9 @@ def main():
 
     elif args.command == Command.JIRALIST:
         listJiras(args)
+
+    elif args.command == Command.JIRA_MARKASDONE:
+        jiraMarkAsDone(args)
 
 if __name__ == '__main__':
     main()

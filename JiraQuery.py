@@ -1,7 +1,20 @@
-from jira import JIRA
+from jira import JIRA, JIRAError
+from jira.resources import Issue
 from ScanConfiguration import ScanConfiguration
 import logging
 import subprocess
+from enum import StrEnum
+
+
+# Jira fields we care about
+class JiraFieldId(StrEnum):
+    SUMMARY = "summary",
+    CREATED = "created",
+    STATUS = "status",
+    FIX_VERSION = "fixVersions",
+    REQUIRES_REL_NOTE = "customfield_12324",
+    REQUIRES_DOC_CHANGES = "customfield_12214",
+    REL_NOTE = "customfield_11802"
 
 
 class JiraQuery:
@@ -73,20 +86,10 @@ class JiraQuery:
             print("Error: The 'git' command was not found. Please ensure Git is installed and accessible in your system's PATH.")
             return None
 
-
-
-
     def _query(self) -> list:
         if not self.jira:
             logging.warn("Cannot execute query. Jira connection is not active.")
             return []
-        
-        # comment-in when you want to find out more fields to query
-        # fields_list = self.jira.fields()
-        # print("Available Jira Fields:")
-        # for field in fields_list:
-        #     # Print the technical ID (key) and the human-readable name
-        #     logging.info(f"ID: {field['id']} \t Name: {field['name']}")
 
         jira_filter = None
         project_dir = "."
@@ -109,18 +112,23 @@ class JiraQuery:
 
          # figure out the current project/version from the current git branch
         curr_branch = self._get_current_git_branch(project_dir)
-        query_text = f"filter = {jira_filter} AND status != Done AND summary ~ '{curr_branch}'"
-
+        query_text = f"filter = {jira_filter} AND {JiraFieldId.STATUS} != Done AND {JiraFieldId.SUMMARY} ~ '{curr_branch}'"
         logging.info(f"Executing JQL: {query_text}")
-
         try:
-            # Execute the search. maxResults=False fetches all results.
-            issues = self.jira.search_issues(query_text, maxResults=False, fields=["summary", "created"])
+            # Execute the search. maxResults=False fetches all results/disables pagination
+            issues = self.jira.search_issues(query_text, maxResults=False, fields=[JiraFieldId.SUMMARY, JiraFieldId.CREATED])
             return issues
-
         except Exception as e:
             logging.error(f"Error executing JQL '{query_text}'. Error: {e}")
             return []
+
+    # get the Jira fields
+    def get_fields(self) -> list:
+        if not self.jira:
+            logging.warn("Cannot execute query. Jira connection is not active.")
+            return []
+        return self.jira.fields()
+
 
     # get the ticket IDs for the current project
     def get_vuln_jira_ids(self) -> list[str]:
@@ -154,5 +162,125 @@ class JiraQuery:
                 if vuln_cve in jira_index:
                     v.jira_id = jira_index[vuln_cve]
                     break
+
+    def _prepare_for_status_change(self, issue: Issue) :
+        issue_key = issue.key
+        logging.info(f"Attempting to update mandatory fields for {issue_key}")
+        
+        # 1. Define fields for update
+        # Yes/No fields are typically updated by passing the value as a dictionary 
+        # with the 'value' key, or sometimes just the string value depending on the field type config.
+        # We will use the format: {'value': 'No'} which is common for Select List (single choice).
+        scan_config = ScanConfiguration()
+        project_dir = "."
+        if scan_config.has_scan(self.scan_name):
+            # get the project root dir, so the git branch can be found
+            if scan_config.has_scan_property(self.scan_name, "root"):
+                project_dir = scan_config.get_scan_property(self.scan_name, "root")
+        git_branch = self._get_current_git_branch(project_dir)
+        fix_version = scan_config.get_fix_version_for_git_branch(git_branch)
+        
+        fields_to_update = {
+            JiraFieldId.REQUIRES_DOC_CHANGES: {'value': 'No'},
+            JiraFieldId.REQUIRES_REL_NOTE: {'value': 'No'},
+            # fixVersions field takes a list of dictionary objects
+            JiraFieldId.FIX_VERSION: [{'name': fix_version}]
+        }
+
+        # 2. Perform the update
+        try:
+            issue.update(fields=fields_to_update)
+            logging.info(f"Successfully updated fields for {issue_key}: {JiraFieldId.REQUIRES_DOC_CHANGES}, {JiraFieldId.REQUIRES_REL_NOTE}, and {JiraFieldId.FIX_VERSION} to '{fix_version}'.")
+            return True
+        
+        except JIRAError as e:
+            # A common JIRAError for invalid versions is 400 (Bad Request)
+            if e.status_code == 400:
+                logging.warning(
+                    f"{issue_key} - failed to update [{FIELD_ID_FIX_VERSION}] "
+                    f"with value [{fix_version}]. The value may not exist in Jira: {e.text}"
+                )
+                return False
+            else:
+                logging.error(f"Error updating fields for {issue_key}: {e.status_code} - {e.text}")
+                return False
+        except Exception as e:
+            logging.error(f"An unexpected error occurred during field update for {issue_key}: {e}")
+            return False
+        pass
+
+    def _transition_status(self, issue_key: str, new_status: str):
+        logging.info(f"Attempting to transition {issue_key} to '{new_status}'...")
+        try:
+            # Get all valid transitions for the issue
+            transitions = self.jira.transitions(issue_key)
+            
+            # Find the ID for the desired transition
+            transition_id = next(
+                (t['id'] for t in transitions if t['name'].lower() == new_status.lower()), 
+                None
+            )
+
+            if transition_id:
+                # Perform the transition
+                self.jira.transition_issue(issue_key, transition_id)
+                logging.info(f"Successfully applied [{new_status}] to {issue_key}")
+                return True
+            else:
+                # This happens if the target status is not a valid transition path
+                logging.warning(
+                    f"Could not find a valid transition path from the current status "
+                    f"to apply [{new_status}] for {issue_key}. Skipping transition."
+                )
+                return False
+
+        except JIRAError as e:
+            logging.error(f"Error transitioning {issue_key}: {e.status_code} - {e.text}")
+            return False
+
+
+    # mark jira tickets as done
+    def mark_as_done(self, ids_list: list) :
+        if not self.jira:
+            logging.warn("Cannot execute query. Jira connection is not active.")
+            return []
+
+        for ticket_id in ids_list:
+            try:
+                jira_issue = self.jira.issue(ticket_id, fields=[JiraFieldId.STATUS,JiraFieldId.SUMMARY])
+                current_status = jira_issue.fields.status.name
+                # Done tickets don't need to be touched
+                if current_status.lower() == "done":
+                    logging.info(f"ticket_id is already 'Done' - nothing to do")
+                    continue
+                # Backlog tickets need to go to "in progress", then "Done"
+                # fields need to be updated in order to move to "In progress"
+                if current_status.lower() == "backlog":
+                    self._prepare_for_status_change(jira_issue) # update the relnotes/docs checkboxes
+                    if (self._transition_status(ticket_id, "In Progress")):
+                        self._transition_status(ticket_id, "testing not required")
+                elif current_status.lower() == "in progress":
+                    self._transition_status(ticket_id, "testing not required")
+                else:
+                    logging.warning(f"{ticket_id} has status '{current_status}'. "
+                                    "Cannot/will not makr this as Done")
+            except JIRAError as e:
+                if e.status_code == 404:
+                    # Issue not found
+                    logging.warning(f"{ticket_id} does not exist or you do not have permission to view it.")
+                else:
+                    # Other Jira API error
+                    logging.error(f"Failed to fetch or process {ticket_id}: {e.status_code} - {e.text}")
+            except Exception as e:
+                logging.error(f"An unexpected error occurred while processing {ticket_id}: {e}")
+
+
+
+
+
+
+
+
+
 
 

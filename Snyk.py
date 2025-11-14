@@ -23,6 +23,8 @@ class Snyk:
         # (and it is a recognised name)
         if scan_name:
             scan_config = ScanConfiguration()
+            self.dump_snyk = scan_config.dump_snyk_is_active()
+
             if scan_config.has_scan(scan_name):
                 self.project_dir = scan_config.get_scan_property(scan_name,"root")
                 self.scan_type = scan_config.get_scan_property(scan_name,"type")
@@ -160,7 +162,9 @@ class Snyk:
             logging.info("No projects to scan.")
             return
 
-        jsonLogger = JsonLogWriter(self.log_path)
+        jsonLogger = None
+        if self.dump_snyk:
+            jsonLogger = JsonLogWriter(self.log_path)
         
         for p in projects_to_scan:
             # Run actual Snyk test with specified options
@@ -204,10 +208,12 @@ class Snyk:
                 new_project = Project(p, json_data)
                 self.scanned_projects[p] = new_project
 
-                jsonLogger.write_to_file(p,json_data)
+                if jsonlogger:
+                    jsonLogger.write_to_file(p,json_data)
 
         # finally compress the log dir
-        jsonLogger.compress()
+        if jsonlogger:
+            jsonLogger.compress()
         
         self.is_tested = True
 

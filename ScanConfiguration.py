@@ -54,8 +54,13 @@ class ScanConfiguration:
             scansList.append(name)
         return scansList
 
-    def get_scan_config_filename(self):
-        pass
+    def dump_snyk_is_active(self) -> bool:
+        if "dump_snyk" in self.json_data["configuration"]:
+            return self.json_data["configuration"]["dump_snyk"].lower() == "yes"
+        return False
 
-
-
+    def get_fix_version_for_git_branch(self, git_branch: str) -> str:
+        if "fix_version_mapping" in self.json_data["configuration"]:
+            if git_branch in self.json_data["configuration"]["fix_version_mapping"]:
+                return self.json_data["configuration"]["fix_version_mapping"][git_branch]
+        return None
