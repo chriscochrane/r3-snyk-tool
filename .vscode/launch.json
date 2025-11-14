@@ -11,8 +11,9 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "test",
-                "-n", "os-relpack",
+                "jlist",
+                "-n",
+                "ent-relpack",
                 "-v"
             ]
         }

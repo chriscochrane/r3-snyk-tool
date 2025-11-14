@@ -16,7 +16,7 @@ from Snyk import Snyk
 from Vulnerability import Vulnerability
 from ScanReport import ScanReport
 from ScanConfiguration import ScanConfiguration
-
+from JiraQuery import JiraQuery
 
 # the supported commands
 class Command(StrEnum):
@@ -28,7 +28,8 @@ class Command(StrEnum):
     SUMMARISE = "sum",
     TEST = "test",
     REPORT = "rep",
-    SCANSLIST = "slist"
+    SCANSLIST = "slist",
+    JIRALIST = "jlist"
 
 
 def _configure_logging(args :argparse.Namespace):
@@ -230,6 +231,97 @@ def listScans(args : argparse.Namespace) :
     
     print(json.dumps(json_doc, indent=2))
 
+
+# list the open Jira tickets affecting the current project
+def listJiras(args : argparse.Namespace) :
+    # figure out the current project/version from the current git branch
+    curr_branch = _get_current_git_branch("/Users/chris.cochrane/dev/git/corda/release-pack-generation")
+    # create a jira api using the current git branch; the connection info comes from env vars
+    if "JIRA_SERVER" not in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
+        print(f"JIRA_SERVER, JIRA_USER and JIRA_API_TOKEN must all be set in the environment in order to access Jira")
+        return
+    jira_query = JiraQuery( os.environ["JIRA_SERVER"],
+                            os.environ["JIRA_USER"],
+                            os.environ["JIRA_API_TOKEN"])
+    
+    # get the filter to use - require this so as not to issue stupid queries
+    jira_filter = None
+    scan_name = args.name
+    if scan_name != None:
+        scan_config = ScanConfiguration()
+        if scan_config.has_scan(scan_name):
+            if scan_config.has_scan_property(scan_name, "jira_filter_id"):
+                jira_filter = scan_config.get_scan_property(scan_name, "jira_filter_id")
+        else:
+            print(f"Scan [{scan_name}] not known")
+    
+    # get the open jiras
+    if jira_filter == None:
+        print("No filter specified and so not going to query Jira")
+    else:
+        # find open issues and ones that are for this branch
+        query_text = f"filter = {jira_filter} AND status = Backlog AND summary ~ '{curr_branch}'"
+        jira_ids = jira_query.query(query_text)
+
+    # list them as a jira doc
+    json_doc = {}
+    json_doc["num"] = len(jira_ids)
+    json_doc["jira"] = []
+    for jid in jira_ids:
+        json_doc["jira"].append(jid)
+    
+    print(json.dumps(json_doc, indent=2))
+    
+
+def _get_current_git_branch(path: str = ".") -> str | None:
+    """
+    Retrieves the name of the current Git branch for the repository at the given path.
+
+    Args:
+        path (str): The path to the Git repository (defaults to the current directory).
+
+    Returns:
+        str | None: The name of the current branch, or None if an error occurs 
+                    (e.g., not a Git repository or Git is not installed).
+    """
+    try:
+        # The command 'git rev-parse --abbrev-ref HEAD' is the standard way 
+        # to get the current branch name.
+        # - check=True raises a CalledProcessError if the command returns a non-zero exit code.
+        # - capture_output=True captures stdout and stderr.
+        # - text=True decodes stdout and stderr as strings (using the default system encoding).
+        result = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            cwd=path,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+
+        # The output is often followed by a newline, so we strip whitespace.
+        branch_name = result.stdout.strip()
+        
+        if branch_name == 'HEAD':
+            # This happens in a detached HEAD state (e.g., after checking out a commit hash).
+            print(f"Warning: Repository at '{path}' is in a detached HEAD state.")
+            return None
+            
+        return branch_name
+
+    except subprocess.CalledProcessError as e:
+        # Handle errors, such as the path not being a Git repository.
+        print(f"Error executing Git command in '{path}':")
+        print(f"    Return Code: {e.returncode}")
+        print(f"    Stderr: {e.stderr.strip()}")
+        print("This usually means the directory is not a Git repository.")
+        return None
+    except FileNotFoundError:
+        # Handle the case where the 'git' executable itself is not found (Git not installed or not in PATH).
+        print("Error: The 'git' command was not found. Please ensure Git is installed and accessible in your system's PATH.")
+        return None
+
+
+
         
 def _getRedundantIDs(waiver_manager: Waivers,snyk_manager: Snyk) -> list:
     # IDs in the waivers file
@@ -423,6 +515,15 @@ def main():
                                 action='store_true', 
                                 help='Output informational messages during processing.')
 
+    # list open jira items for this branch
+    jira_parser = subparsers.add_parser(Command.JIRALIST, help='List the open jira tickets for the current project')
+    jira_parser.add_argument('-v', '--verbose', 
+                                action='store_true', 
+                                help='Output informational messages during processing.')
+    jira_parser.add_argument('-n', '--name', 
+                                default=None, 
+                                help='The scan name to use for executing the snyk test.')
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -455,6 +556,9 @@ def main():
 
     elif args.command == Command.SCANSLIST:
         listScans(args)
+
+    elif args.command == Command.JIRALIST:
+        listJiras(args)
 
 if __name__ == '__main__':
     main()

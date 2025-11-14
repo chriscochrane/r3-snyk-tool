@@ -1,11 +1,25 @@
 # r3-snyk-tool
-This is a helper tool written in Python, that was developed to help manage vulnerbilities in R3 projects, which use Snyk for vulnerability scanning. It initially started as a waiver-management tool, but later expanded to include general Snyk-scanning helpers.
+This is a helper tool written in Python, that was developed to help manage vulnerbilities in R3 projects, which use Snyk for vulnerability scanning. It initially started as a waiver-management tool, but later expanded to include general Snyk-scanning helper utilities.
 
 The [first part](#how-to-use-r3-snyk-tool) of this document describes how to use the tool.
 
 The [second part](#under-the-bonnet) provides some information about the source code, project structure, and so forth.
 
 # How to use r3-snyk-tool
+
+## Environment
+The application was developed using Python 3.
+The following Python packages need to be available in the environment where the application is running.
+jira
+json
+
+The following environment variables need to be set where the application is running.
+|env var|description|
+|----|----|
+|JIRA_SERVER|The server address for Jira i.e. https://r3-cev.atlassian.net/|
+|JIRA_USER|Jira username, typically your email address.|
+|JIRA_API_TOKEN|Jira API token. You can create this in Jira yourself.|
+
 
 ## Running the tool
 It can be run from the command-line thus:
@@ -17,6 +31,7 @@ It can be run from the command-line thus:
 |command|description|
 |----|----|
 |`count`|Count the number of waivers in the waivers file|
+|`jlist`|List the Jira tickets that are currently open for the project|
 |`list`|List the IDs in the waivers file|
 |`red`|List the IDs of waivers that are redundant|
 |`rm`|Remove waivers from the waivers file|
@@ -42,6 +57,9 @@ To save repeated definitions, the arguments are described here.
 
 ### count
 Count the number of waivers in the waivers file.
+
+### jlist
+List the Jira tickets that are currently open for the project.
 
 ### list
 List the Snyk IDs of the waivered vulnerabilities found in the waivers file.
