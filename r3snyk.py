@@ -260,6 +260,7 @@ def listJiras(args : argparse.Namespace) :
 
     # list them as a jira doc
     json_doc = {}
+    json_doc["git_branch"] = jira_query.git_branch
     json_doc["num"] = len(jira_ids)
     json_doc["jira"] = []
     for jid in jira_ids:

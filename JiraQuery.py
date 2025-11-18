@@ -28,6 +28,7 @@ class JiraQuery:
         self.api_token = api_token
         self.jira = None
         self.scan_name = scan_name
+        self.git_branch = None
         
         try:
             # Establish the connection using basic authentication (email + API token)
@@ -37,7 +38,6 @@ class JiraQuery:
             logging.error(f"Failed to connect to Jira at {self.server}. Error: {e}")
             # Ensure jira is None if connection fails
             self.jira = None
-
 
     def _get_current_git_branch(self, path: str = ".") -> str | None:
         """
@@ -111,8 +111,8 @@ class JiraQuery:
             return []
 
          # figure out the current project/version from the current git branch
-        curr_branch = self._get_current_git_branch(project_dir)
-        query_text = f"filter = {jira_filter} AND {JiraFieldId.STATUS} != Done AND {JiraFieldId.SUMMARY} ~ '{curr_branch}'"
+        self.git_branch = self._get_current_git_branch(project_dir)
+        query_text = f"filter = {jira_filter} AND {JiraFieldId.STATUS} != Done AND {JiraFieldId.SUMMARY} ~ '{self.git_branch}'"
         logging.info(f"Executing JQL: {query_text}")
         try:
             # Execute the search. maxResults=False fetches all results/disables pagination
