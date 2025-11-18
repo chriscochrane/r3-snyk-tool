@@ -208,11 +208,11 @@ class Snyk:
                 new_project = Project(p, json_data)
                 self.scanned_projects[p] = new_project
 
-                if jsonlogger:
+                if jsonLogger:
                     jsonLogger.write_to_file(p,json_data)
 
         # finally compress the log dir
-        if jsonlogger:
+        if jsonLogger:
             jsonLogger.compress()
         
         self.is_tested = True

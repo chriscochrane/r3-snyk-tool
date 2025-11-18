@@ -531,5 +531,11 @@ def main():
     elif args.command == Command.JIRA_MARKASDONE:
         jiraMarkAsDone(args)
 
+    # TBD jtidy command
+    # runs a snyk test - vulns have their jira items assigned
+    # finds all jira tickets for this project
+    # any jiras NOT in the vuln report are msrked as done
+    
+
 if __name__ == '__main__':
     main()
