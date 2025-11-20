@@ -8,17 +8,21 @@ class JsonLogWriter:
     A class for writing data to JSON files in a specified log directory.
     """
     
-    def __init__(self, base_log_path: str):
+    def __init__(self, scan_timestamp: str):
         """
         Initializes the LogWriter with a base path for logs.
 
         Args:
             base_log_path (str): The root directory where logs will be stored.
         """
+
+        # base path fo the dir
+        base_path = os.path.expanduser(os.path.join('~', '.r3cache', 'snyk'))
+        # Create the full path for the new directory.
+        self.log_path = os.path.join(base_path, scan_timestamp)
         # Ensure the base log path exists, creating it if necessary.
-        # os.makedirs is a safe way to create nested directories.
-        os.makedirs(base_log_path, exist_ok=True)
-        self.log_path = base_log_path
+        os.makedirs(self.log_path, exist_ok=True)
+
 
     def write_to_file(self, filename: str, data: dict) -> bool:
         """

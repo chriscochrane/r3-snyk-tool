@@ -16,8 +16,6 @@ class Snyk:
 
         self.buildfile = "build.gradle"
         self.scan_timestamp = f"{datetime.now().strftime('%Y%m%d-%H%M%S%f')[:-4]}"
-        self.log_path = ""
-        self.base_path = ""
         self.project_dir = "."
         self.scan_type = "dev"
         self.user_projects = []
@@ -40,7 +38,8 @@ class Snyk:
                     if not self.buildfile:
                         self.buildfile = "build.gradle"
             else:
-                logging.warn(f"Scan [{scan_name}] not found")
+                logging.error(f"Scan [{scan_name}] not found")
+                raise ValueError(f"Unknown scan [{scan_name}]")
 
         # args specified on the command line override anything from the named scan configuration
         if project_dir:
@@ -98,47 +97,7 @@ class Snyk:
             print(f"Error running find command: {e}")
             print(f"stderr: {e.stderr}")
         except FileNotFoundError:
-            print("Error: The 'find' command was not found. Please ensure it's in your system's PATH.")
-
-
-    def _create_log_directory(self) -> bool:
-        """
-        Creates a new directory inside the '~/.r3cache/snyk' directory.
-
-        If the parent directory '~/.r3cache/snyk' does not exist, it will be
-        created automatically. If the target directory 'dir_name' already exists,
-        no action is taken and the function returns False.
-
-        Args:
-            dir_name (str): The name of the directory to create.
-
-        Returns:
-            bool: True if the directory was successfully created, False otherwise.
-        """
-        # Define the base path where the new directory will be created.
-        # os.path.expanduser('~') is used for cross-platform compatibility
-        # to find the user's home directory.
-        self.base_path = os.path.expanduser(os.path.join('~', '.r3cache', 'snyk'))
-        
-        # Create the full path for the new directory.
-        self.log_path = os.path.join(self.base_path, self.scan_timestamp)
-
-        # Check if the target directory already exists.
-        if os.path.exists(self.log_path):
-            # The directory already exists, so we return False without creating it.
-            print(f"Directory already exists: {self.log_path}")
-            return False
-        else:
-            try:
-                # Use os.makedirs with exist_ok=False to create the directory.
-                # This will create all necessary parent directories.
-                # If the directory exists, it will raise an error, but we've
-                # already checked for that.
-                os.makedirs(self.log_path)
-                return True
-            except OSError as e:
-                # Catch potential errors during directory creation (e.g., permissions).
-                return False        
+            print("Error: The 'find' command was not found. Please ensure it's in your system's PATH.")      
 
 
     # run a snyk test
@@ -147,8 +106,6 @@ class Snyk:
             return
 
         self._discover_gradle_projects()
-        self._create_log_directory()
-
         projects_to_scan = set()
 
         # if some projects were specified at the commnd line, try to use them.
@@ -168,7 +125,7 @@ class Snyk:
 
         jsonLogger = None
         if self.dump_snyk:
-            jsonLogger = JsonLogWriter(self.log_path)
+            jsonLogger = JsonLogWriter(self.scan_timestamp)
         
         for p in projects_to_scan:
             # Run actual Snyk test with specified options
