@@ -112,7 +112,7 @@ class JiraQuery:
 
          # figure out the current project/version from the current git branch
         self.git_branch = self._get_current_git_branch(project_dir)
-        query_text = f"filter = {jira_filter} AND {JiraFieldId.STATUS} != Done AND {JiraFieldId.SUMMARY} ~ '{self.git_branch}'"
+        query_text = f"filter = {jira_filter} AND {JiraFieldId.STATUS} != Done AND {JiraFieldId.STATUS} != 'Waiver Provided' AND {JiraFieldId.STATUS} != 'Descope' AND {JiraFieldId.SUMMARY} ~ '{self.git_branch}'"
         logging.info(f"Executing JQL: {query_text}")
         try:
             # Execute the search. maxResults=False fetches all results/disables pagination
@@ -210,7 +210,7 @@ class JiraQuery:
         pass
 
     def _transition_status(self, issue_key: str, new_status: str):
-        logging.info(f"Attempting to transition {issue_key} to '{new_status}'...")
+        logging.info(f"Attempting to apply [{new_status}] transition {issue_key}...")
         try:
             # Get all valid transitions for the issue
             transitions = self.jira.transitions(issue_key)
@@ -230,7 +230,7 @@ class JiraQuery:
                 # This happens if the target status is not a valid transition path
                 logging.warning(
                     f"Could not find a valid transition path from the current status "
-                    f"to apply [{new_status}] for {issue_key}. Skipping transition."
+                    f"to apply transition [{new_status}] for {issue_key}. Skipping transition."
                 )
                 return False
 
@@ -263,7 +263,7 @@ class JiraQuery:
                     self._transition_status(ticket_id, "testing not required")
                 else:
                     logging.warning(f"{ticket_id} has status '{current_status}'. "
-                                    "Cannot/will not makr this as Done")
+                                    "Cannot/will not mark this as Done")
             except JIRAError as e:
                 if e.status_code == 404:
                     # Issue not found

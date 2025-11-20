@@ -18,6 +18,10 @@ class Snyk:
         self.scan_timestamp = f"{datetime.now().strftime('%Y%m%d-%H%M%S%f')[:-4]}"
         self.log_path = ""
         self.base_path = ""
+        self.project_dir = "."
+        self.scan_type = "dev"
+        self.user_projects = []
+        self.project_mapping = {}
 
         # read stuff out of the scan configuration, if one was specified
         # (and it is a recognised name)
@@ -36,7 +40,7 @@ class Snyk:
                     if not self.buildfile:
                         self.buildfile = "build.gradle"
             else:
-                logging.error(f"Scan [{scan_name}] not found")
+                logging.warn(f"Scan [{scan_name}] not found")
 
         # args specified on the command line override anything from the named scan configuration
         if project_dir:

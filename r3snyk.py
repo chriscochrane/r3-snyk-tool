@@ -201,10 +201,9 @@ def testProject(args : argparse.Namespace):
                                     args.name)
             jira_query.attach_jira_ids(openVulns)
 
+    print_as_json(snyk_manager.scan_timestamp, openVulns, waiveredVulns)
     if args.csv:
         print_as_csv(openVulns, waiveredVulns)
-    else:
-        print_as_json(snyk_manager.scan_timestamp, openVulns, waiveredVulns)
 
 
 def processReport(args : argparse.Namespace):
