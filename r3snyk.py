@@ -30,7 +30,8 @@ class Command(StrEnum):
     REPORT = "rep",
     SCANSLIST = "slist",
     JIRALIST = "jlist",
-    JIRA_MARKASDONE = "jmad"
+    JIRA_MARKASDONE = "jmad",
+    JIRAFIELDS = "jfields"
 
 
 def _configure_logging(args :argparse.Namespace):
@@ -268,7 +269,8 @@ def listJiras(args : argparse.Namespace) :
     
     print(json.dumps(json_doc, indent=2))
     
-
+    
+# accept a list of jiras and mark them as done
 def jiraMarkAsDone(args : argparse.Namespace) :
     ticket_ids = [ t.strip() for t in args.ids.split(',') if t.strip() ]
     
@@ -277,6 +279,25 @@ def jiraMarkAsDone(args : argparse.Namespace) :
                             os.environ["JIRA_API_TOKEN"],
                             args.name)
     jira_query.mark_as_done(ticket_ids)
+
+
+# utility command - get the available jira fields
+def jiraFields(args : argparse.Namespace) :
+    jira_query = JiraQuery( os.environ["JIRA_SERVER"],
+                            os.environ["JIRA_USER"],
+                            os.environ["JIRA_API_TOKEN"],
+                            None)
+    fields = jira_query.get_fields()
+
+    json_doc = {}
+    json_doc["num"] = len(fields)
+    json_doc["fields"] = {}
+    for fld in fields:
+        id = fld["id"]
+        name = fld["name"]
+        json_doc["fields"][id] = name
+        
+    print(json.dumps(json_doc, indent=2))
 
 
 def _getRedundantIDs(waiver_manager: Waivers,snyk_manager: Snyk) -> list:
@@ -493,6 +514,12 @@ def main():
                                 required=True,
                                 help='List of Jira IDs')
 
+    # list open jira items for this branch
+    jfields_parser = subparsers.add_parser(Command.JIRAFIELDS, help='List the Jira fields')
+    jfields_parser.add_argument('-v', '--verbose', 
+                                action='store_true', 
+                                help='Output informational messages during processing.')
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -531,6 +558,9 @@ def main():
 
     elif args.command == Command.JIRA_MARKASDONE:
         jiraMarkAsDone(args)
+
+    elif args.command == Command.JIRAFIELDS:
+        jiraFields(args)
 
     # TBD jtidy command
     # runs a snyk test - vulns have their jira items assigned
