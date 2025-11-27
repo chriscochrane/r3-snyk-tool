@@ -174,10 +174,10 @@ def print_as_csv(openVulns, waiveredVulns):
     for i, v in enumerate(openVulns):
         if v.cve:
             for cve_id in v.cve:
-                print(f"{i},{cve_id},{v.id},{v.severity},{v.name},{v.title},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ""}")
+                print(f"{i + 1},{cve_id},{v.id},{v.severity},{v.name},{v.title},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ""}")
         else:
             for cwe_id in v.cwe:
-                print(f"{i},{cwe_id},{v.id},{v.severity},{v.name},{v.title},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ""}")
+                print(f"{i + 1},{cwe_id},{v.id},{v.severity},{v.name},{v.title},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ""}")
 
 
 def testProject(args : argparse.Namespace):
