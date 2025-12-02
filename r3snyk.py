@@ -189,23 +189,25 @@ def testProject(args : argparse.Namespace):
     snyk_manager = Snyk(project_dir=args.project,user_projects=projects_list,scan_type=args.type,scan_name=args.name)
     # get the open and waivered vulns
     openVulns = snyk_manager.get_open_vulnerabilities(match_path=args.match)
-    waiveredVulns = snyk_manager.get_waivered_vulnerabilities()
-
-    if openVulns:
-        # if the config exists, create a jira api using the current git branch; the connection info comes from env vars
-        # use it to attach Jira ticket IDs to the open vulnerabilities
-        if "JIRA_SERVER" in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
-            # get the open jiras that are for this branch
-            jira_query = JiraQuery( os.environ["JIRA_SERVER"],
-                                    os.environ["JIRA_USER"],
-                                    os.environ["JIRA_API_TOKEN"],
-                                    args.name)
-            jira_query.attach_jira_ids(openVulns)
-
-    if args.csv:
-        print_as_csv(openVulns, waiveredVulns)
+    if snyk_manager.scan_error:
+        print(f"Scan failed with error [{snyk_manager.scan_error}]")
     else:
-        print_as_json(snyk_manager.scan_timestamp, openVulns, waiveredVulns)
+        waiveredVulns = snyk_manager.get_waivered_vulnerabilities()
+        if openVulns:
+            # if the config exists, create a jira api using the current git branch; the connection info comes from env vars
+            # use it to attach Jira ticket IDs to the open vulnerabilities
+            if "JIRA_SERVER" in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
+                # get the open jiras that are for this branch
+                jira_query = JiraQuery( os.environ["JIRA_SERVER"],
+                                        os.environ["JIRA_USER"],
+                                        os.environ["JIRA_API_TOKEN"],
+                                        args.name)
+                jira_query.attach_jira_ids(openVulns)
+
+        if args.csv:
+            print_as_csv(openVulns, waiveredVulns)
+        else:
+            print_as_json(snyk_manager.scan_timestamp, openVulns, waiveredVulns)
 
 
 def processReport(args : argparse.Namespace):

@@ -20,6 +20,7 @@ class Snyk:
         self.scan_type = "dev"
         self.user_projects = []
         self.project_mapping = {}
+        self.scan_error = None
 
         # read stuff out of the scan configuration, if one was specified
         # (and it is a recognised name)
@@ -162,7 +163,11 @@ class Snyk:
                     logging.info(f"Snyk failed to find sub-project [{p}]; ignoring")
                     continue
                 else:
-                    logging.error(f"Snyk failed for project [{p}], error was [{json_err}]")
+                    logging.error(f"Snyk failed for project [{p}]")
+                    # consider this sort of error as fatal - there is something fundamenetally wrong
+                    self.scan_error = json_err
+                    break
+
             else:
                 # Create a project object to hold/parse the scan result data, and provide access
                 # to the vulnerabilities within.

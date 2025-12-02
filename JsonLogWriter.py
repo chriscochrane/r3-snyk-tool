@@ -21,7 +21,7 @@ class JsonLogWriter:
         # Create the full path for the new directory.
         self.log_path = os.path.join(base_path, scan_timestamp)
         # Ensure the base log path exists, creating it if necessary.
-        os.makedirs(self.log_path, exist_ok=True)
+        # os.makedirs(self.log_path, exist_ok=True)
 
 
     def write_to_file(self, filename: str, data: dict) -> bool:
@@ -42,6 +42,9 @@ class JsonLogWriter:
             filename = "project-root"
             
         full_path = os.path.join(self.log_path, f"{filename}.json")
+        parent_dir = os.path.dirname(full_path)
+        # ensure the parent dir exists
+        os.makedirs(parent_dir, exist_ok=True)
         
         try:
             # Use a 'with' statement for safe file handling.
@@ -57,9 +60,11 @@ class JsonLogWriter:
 
 
     def compress(self):
-        parent_dir = os.path.dirname(self.log_path)
-        dir_name = os.path.basename(self.log_path)
-        output_zip_path = os.path.join(parent_dir, dir_name)
-        shutil.make_archive(output_zip_path, 'zip', root_dir=parent_dir, base_dir=dir_name)
-        shutil.rmtree(self.log_path)
+        # check if the log dir exists; it might not, if there was no attempt to write anything
+        if os.path.exists(self.log_path):
+            parent_dir = os.path.dirname(self.log_path)
+            dir_name = os.path.basename(self.log_path)
+            output_zip_path = os.path.join(parent_dir, dir_name)
+            shutil.make_archive(output_zip_path, 'zip', root_dir=parent_dir, base_dir=dir_name)
+            shutil.rmtree(self.log_path)
 

@@ -11,7 +11,10 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "jfields"
+                "test",
+                "-n",
+                "corda-os-dev",
+                "-v"
             ]
         }
     ]
