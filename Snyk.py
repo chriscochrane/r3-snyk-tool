@@ -94,10 +94,10 @@ class Snyk:
                 logging.info(f"Found: {self.all_gradle_projects}")
 
         except subprocess.CalledProcessError as e:
-            print(f"Error running find command: {e}")
-            print(f"stderr: {e.stderr}")
+            logging.error(f"Error running find command: {e}")
+            logging.error(f"stderr: {e.stderr}")
         except FileNotFoundError:
-            print("Error: The 'find' command was not found. Please ensure it's in your system's PATH.")      
+            logging.error("Error: The 'find' command was not found. Please ensure it's in your system's PATH.")      
 
 
     # run a snyk test
@@ -117,7 +117,7 @@ class Snyk:
                 if p in self.all_gradle_projects:
                     projects_to_scan.add(p)
                 else:
-                    print(f"The project '{p}' was not found; ignoring.")
+                    logging.warn(f"The project '{p}' was not found; ignoring.")
         
         if not projects_to_scan:
             logging.info("No projects to scan.")
