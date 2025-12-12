@@ -20,6 +20,16 @@ The following environment variables need to be set where the application is runn
 |JIRA_USER|Jira username, typically your email address.|
 |JIRA_API_TOKEN|Jira API token. You can create this in Jira yourself.|
 
+## Installation
+From the root directory of this project, run:
+
+`pip install .`
+
+This installs the r3snyk application as Python application `sk` (saves typing)
+
+To uninstall:
+
+`pip uninstall r3snyk`
 
 ## Running the tool
 It can be run from the command-line thus:

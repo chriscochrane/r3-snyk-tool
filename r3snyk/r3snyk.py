@@ -11,12 +11,12 @@ import secrets
 
 from datetime import datetime
 from enum import StrEnum
-from Waivers import Waivers
-from Snyk import Snyk
-from Vulnerability import Vulnerability
-from ScanReport import ScanReport
-from ScanConfiguration import ScanConfiguration
-from JiraQuery import JiraQuery
+from .Waivers import Waivers
+from .Snyk import Snyk
+from .Vulnerability import Vulnerability
+from .ScanReport import ScanReport
+from .ScanConfiguration import ScanConfiguration
+from .JiraQuery import JiraQuery
 
 # the supported commands
 class Command(StrEnum):

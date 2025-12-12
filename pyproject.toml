@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "r3snyk"
+version = "0.1.0"
+description = "R3 Snyk helper application"
+dependencies = ["jira",
+                "PyYAML",] 
+
+[project.scripts]
+sk = "r3snyk.r3snyk:main"

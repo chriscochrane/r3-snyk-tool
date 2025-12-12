@@ -1,5 +1,5 @@
 import json
-from Vulnerability import Vulnerability
+from .Vulnerability import Vulnerability
 
 #
 # represent a scanned snyk project

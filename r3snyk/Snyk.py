@@ -3,9 +3,9 @@ import json
 import os
 import sys
 import logging
-from JsonLogWriter import JsonLogWriter
-from Project import Project
-from ScanConfiguration import ScanConfiguration
+from .JsonLogWriter import JsonLogWriter
+from .Project import Project
+from .ScanConfiguration import ScanConfiguration
 from datetime import datetime
 
 

@@ -1,6 +1,6 @@
 from jira import JIRA, JIRAError
 from jira.resources import Issue
-from ScanConfiguration import ScanConfiguration
+from .ScanConfiguration import ScanConfiguration
 import logging
 import subprocess
 from enum import StrEnum

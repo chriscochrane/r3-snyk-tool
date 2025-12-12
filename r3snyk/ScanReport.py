@@ -2,7 +2,7 @@ import json
 import logging
 import os
 
-from Vulnerability import Vulnerability
+from .Vulnerability import Vulnerability
 
 class ScanReport:
 
