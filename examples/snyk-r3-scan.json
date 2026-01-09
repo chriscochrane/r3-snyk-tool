@@ -1,5 +1,44 @@
 {
+  "configuration": {
+    "fix_version_mapping": {
+      "CORDA-ENT/release/4.10": "Corda Enterprise 4.10",
+      "CORDA-ENT/release/4.11": "Corda Enterprise 4.11",
+      "CORDA-ENT/release/4.12": "Corda Enterprise 4.12",
+      "CORDA-ENT/release/4.13": "Corda Enterprise 4.13",
+      "CORDA-OS/release/4.10": "Corda 4.10",
+      "CORDA-OS/release/4.11": "Corda 4.11",
+      "CORDA-OS/release/4.12": "Corda 4.12",
+      "CORDA-OS/release/4.13": "Corda 4.13",
+      "CENM-release/1.6": "CENM 1.6",
+      "CENM-release/1.7": "CENM 1.7"
+    },
+    "dump_snyk": "yes"
+  },
   "scans": {
+    "node-plugin": {
+      "description": "Node management plugin",
+      "root": "/Users/chris.cochrane/dev/git/corda/node-management-plugin",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/node-management-plugin/.snyk",
+      "type": "dev",
+      "buildfile": "build.gradle.kts",
+      "sub-projects": [
+        "",
+        "auth-baseline-node-management-plugin"
+      ],
+      "project-mapping": {}
+    },
+    "flow-plugin": {
+      "description": "Flow management plugin",
+      "root": "/Users/chris.cochrane/dev/git/corda/flow-management-plugin",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/flow-management-plugin/.snyk",
+      "type": "dev",
+      "buildfile": "build.gradle.kts",
+      "sub-projects": [
+        "",
+        "auth-baseline-flow-management-plugin"
+      ],
+      "project-mapping": {}
+    },
     "corda-os": {
       "description": "Corda OS project scan, rel-pack items only",
       "root": "/Users/chris.cochrane/dev/git/corda/corda",
@@ -49,36 +88,60 @@
         "testing/core-test-utils": "core-test-utils",
         "testing/test-utils": "test-utils",
         "testing/test-common": "test-common",
-        "testing/node-driver": "node-driver"
+        "testing/node-driver": "node-driver",
+        "testing/test-db": "test-db"
       }
     },
-    "os-relpack": {
-      "description": "Corda OS release pack scan",
-      "root": "/Users/chris.cochrane/dev/git/corda/release-pack-generation",
-      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
-      "type": "relpack",
-      "sub-projects": [],
-      "project-mapping": {}
-    },
-    "ent-relpack": {
-      "description": "Corda Enterprise release pack scan",
-      "root": "/Users/chris.cochrane/dev/git/corda/release-pack-generation",
-      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
-      "type": "relpack",
-      "sub-projects": [ "runtime",
-                        "devtest",
-                        "optional-tools",
-                        "optional-sdk",
-                        "optional-gateway-plugins"],
-      "project-mapping": {}
-    },
-    "corda-os-dev": {
-      "description": "Corda OS project scan, rel-pack items only",
-      "root": "/Users/chris.cochrane/dev/git/corda/corda",
-      "waivers": "/Users/chris.cochrane/dev/git/corda/corda/.snyk",
+    "corda-ent": {
+      "description": "Corda Enterprise project scan, rel-pack items only",
+      "root": "/Users/chris.cochrane/dev/git/corda/enterprise",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/enterprise/.snyk",
       "type": "dev",
-      "sub-projects": [ "core",
-                        "node-api"
+      "sub-projects": [ "common-configuration-parsing",
+                        "common-logging",
+                        "common-validation",
+                        "confidential-identities",
+                        "core-test-utils",
+                        "enterprise-utils",
+                        "extensions-api",
+                        "extensions-node",
+                        "tools/hsm-tck",
+                        "client/jackson",
+                        "client/jfx",
+                        "client/mock",
+                        "node",
+                        "node-api",
+                        "node-driver",
+                        "perftestcordapp",
+                        "test-common",
+                        "testing/test-db",
+                        "test-utils",
+                        "testing/testserver",
+                        "testing/testserver/testcapsule",
+                        "tools/firewall-loadtest/capsule",
+                        "tools/jmeter",
+                        "tools/pinger",
+                        "settlement-perftest-cordapp",
+                        "recovery-contract",
+                        "bridge/bridgecapsule",
+                        "client/rpc",
+                        "client/extensions-rpc",
+                        "finance/workflows",
+                        "tools/notary-healthcheck/client",
+                        "tools/notary-healthcheck/contract",
+                        "tools/notary-healthcheck/cordapp",
+                        "tools/blobinspector",
+                        "tools/checkpoint-agent",
+                        "tools/cliutils",
+                        "tools/ha-utilities/hautilitiescapsule",
+                        "tools/metering-collector",
+                        "tools/metering-collector/rpc-client",
+                        "tools/bootstrapper",
+                        "tools/network-builder",
+                        "tools/notary-registration",
+                        "tools/notary-utilities",
+                        "tools/dbmigration",
+                        "transaction-validator"
                     ],
       "project-mapping": {
         "common/configuration-parsing": "common-configuration-parsing",
@@ -87,8 +150,145 @@
         "testing/core-test-utils": "core-test-utils",
         "testing/test-utils": "test-utils",
         "testing/test-common": "test-common",
-        "testing/node-driver": "node-driver"
+        "testing/node-driver": "node-driver",
+        "tools/transaction-validator": "transaction-validator"
       }
+    },
+    "cenm-appeng-auth-full": {
+      "description": "CENM appeng-auth project scan",
+      "root": "/Users/chris.cochrane/dev/git/corda/appeng-auth",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
+      "type": "dev",
+      "buildfile": "build.gradle.kts",
+      "sub-projects": [   "accounts-application",
+                          "accounts-baseline-test",
+                          "accounts-client",
+                          "accounts-common",
+                          "accounts-identity-api",
+                          "accounts-identity-core",
+                          "accounts-identity-rest-api",
+                          "accounts-policy-api",
+                          "accounts-policy-core",
+                          "accounts-policy-rest-api",
+                          "accounts-rest-common",
+                          "accounts-test-common",
+                          "appeng-commandline",
+                          "appeng-logging",
+                          "appeng-spring",
+                          "appeng-validation"
+                      ],
+      "project-mapping": {
+      }
+    },
+    "cenm-appeng-auth-relpack": {
+      "description": "CENM appeng-auth project scan",
+      "root": "/Users/chris.cochrane/dev/git/corda/appeng-auth",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
+      "type": "dev",
+      "buildfile": "build.gradle.kts",
+      "sub-projects": [   "accounts-application",
+                          "accounts-client"
+                      ],
+      "project-mapping": {
+      }
+    },
+    "cenm-appeng-gatewaysrv-full": {
+      "description": "CENM appeng-getwaysrv project scan",
+      "root": "/Users/chris.cochrane/dev/git/corda/appeng-gatewaysrv",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
+      "type": "dev",
+      "buildfile": "build.gradle.kts",
+      "sub-projects": [   "gateway-api",
+                          "gateway-cli",
+                          "gateway-core",
+                          "gateway-dev-plugin",
+                          "gateway-openrpc",
+                          "gateway-service",
+                          "gateway-test-baseline",
+                          "gateway-testing",
+                          "gateway-ui-admin",
+                          "gateway-ui-launcher"
+                      ],
+      "project-mapping": {
+      }
+    },
+    "cenm-appeng-gatewaysrv-relpack": {
+      "description": "CENM appeng-getwaysrv project scan",
+      "root": "/Users/chris.cochrane/dev/git/corda/appeng-gatewaysrv",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
+      "type": "dev",
+      "buildfile": "build.gradle.kts",
+      "sub-projects": [   "gateway-service"
+                      ],
+      "project-mapping": {
+      }
+    },
+    "cenm-network-services-relpack": {
+      "description": "CENM network-services project scan",
+      "root": "/Users/chris.cochrane/dev/git/corda/network-services",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
+      "type": "dev",
+      "buildfile": "build.gradle",
+      "sub-projects": [   "cenm-gateway-plugin/accounts-baseline-cenm",
+                          "signing-service-plugin-api/ca",
+                          "signing-service-plugin-api/commonapi",
+                          "signing-service-plugin-api/nonca",
+                          "workflow",
+                          "services",
+                          "config-migration-tool",
+                          "crl-endpoint-tool",
+                          "crr-submission-tool",
+                          "pki-tool",
+                          "services-api",
+                          "ns-netty",
+                          "ns-exceptions",
+                          "logging"
+                      ],
+      "project-mapping": {
+      }
+    },
+    "cenm-nms-visual-relpack": {
+      "description": "CENM nms-visual project scan",
+      "root": "/Users/chris.cochrane/dev/git/corda/nms-visual",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
+      "type": "dev",
+      "buildfile": "build.gradle",
+      "sub-projects": [   "cenm-tool",
+                          "cenm-gateway-plugin"
+                      ],
+      "project-mapping": {
+      }
+    },
+    "os-relpack": {
+      "description": "Corda OS release pack scan",
+      "root": "/Users/chris.cochrane/dev/git/corda/release-pack-generation",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
+      "type": "relpack",
+      "jira_filter_id": 22756,
+      "sub-projects": [],
+      "project-mapping": {}
+    },
+    "ent-relpack": {
+      "description": "Corda Enterprise release pack scan",
+      "root": "/Users/chris.cochrane/dev/git/corda/release-pack-generation",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
+      "type": "relpack",
+      "jira_filter_id": 22755,
+      "sub-projects": [ "runtime",
+                        "devtest",
+                        "optional-tools",
+                        "optional-gateway-plugins",
+                        "optional-sdk" ],
+      "project-mapping": {}
+    },
+    "cenm-relpack": {
+      "description": "CENM release pack scan",
+      "root": "/Users/chris.cochrane/dev/git/corda/release-pack-generation",
+      "waivers": "/Users/chris.cochrane/dev/git/corda/release-pack-generation/.snyk",
+      "type": "relpack",
+      "jira_filter_id": 22757,
+      "sub-projects": [],
+      "project-mapping": {}
     }
   }
 }
