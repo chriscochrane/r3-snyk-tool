@@ -8,15 +8,19 @@
             "name": "Python Debugger: debug r3snyk-tool",
             "type": "debugpy",
             "request": "launch",
-            "module": "r3-snyk-tool.r3snyk",
+            "module": "r3snyk.r3snyk",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "test",
+                "jmad",
                 "-n",
-                "corda-os",
-                "-v"
+                "cenm-relpack",
+                "-v",
+                "-i",
+                "ENT-10412",
+                "-c",
+                "CENM 1.5 is now out of support."
             ]
         }
     ]

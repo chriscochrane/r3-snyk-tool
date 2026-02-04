@@ -280,7 +280,7 @@ def jiraMarkAsDone(args : argparse.Namespace) :
                             os.environ["JIRA_USER"],
                             os.environ["JIRA_API_TOKEN"],
                             args.name)
-    jira_query.mark_as_done(ticket_ids)
+    jira_query.mark_as_done(ticket_ids, args.comment)
 
 
 # utility command - get the available jira fields
@@ -515,6 +515,10 @@ def main():
                                 default=None, 
                                 required=True,
                                 help='List of Jira IDs')
+    jmad_parser.add_argument('-c', '--comment', 
+                                default=None, 
+                                required=True,
+                                help='Comment to attach to each ticket')
 
     # list open jira items for this branch
     jfields_parser = subparsers.add_parser(Command.JIRAFIELDS, help='List the Jira fields')
