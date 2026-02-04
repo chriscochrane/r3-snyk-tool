@@ -13,14 +13,16 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "jmad",
+                "jwav",
                 "-n",
                 "cenm-relpack",
                 "-v",
                 "-i",
-                "ENT-10412",
+                "ENT-12620",
+                "-r",
+                "CVE-2023-52428: This issue is resolved by a TuxCare version of org.springframework.security, version 5.8.16.tuxcare",
                 "-c",
-                "CENM 1.5 is now out of support."
+                "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
             ]
         }
     ]

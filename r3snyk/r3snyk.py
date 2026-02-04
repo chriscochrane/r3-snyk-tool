@@ -31,7 +31,9 @@ class Command(StrEnum):
     SCANSLIST = "slist",
     JIRALIST = "jlist",
     JIRA_MARKASDONE = "jmad",
-    JIRAFIELDS = "jfields"
+    JIRA_WAIVER_PROVIDED = "jwav",
+    JIRAFIELDS = "jfields",
+    JIRASYNC = "jsync"
 
 
 def _configure_logging(args :argparse.Namespace):
@@ -145,6 +147,7 @@ def print_as_json(scan_timestamp, openVulns, waiveredVulns):
         vuln_doc["fixed"] = v.fixed
         vuln_doc["cwe"] = v.cwe
         vuln_doc["cve"] = v.cve
+        vuln_doc["cvssVector"] = v.cvssVector
         vuln_doc["jira_id"] = v.jira_id if v.jira_id is not None else ""
         paths_list = []
         for j, path in enumerate(v.paths):
@@ -162,6 +165,10 @@ def print_as_json(scan_timestamp, openVulns, waiveredVulns):
         vuln_doc["snyk"] = v.id
         vuln_doc["title"] = v.title
         vuln_doc["severity"] = v.severity
+        vuln_doc["jira_id"] = v.jira_id if v.jira_id is not None else ""
+        vuln_doc["cve"] = v.cve
+        vuln_doc["cvssVector"] = v.cvssVector
+        vuln_doc["reason"] = v.reason
         json_doc["waivered"]["vulnerabilities"].append(vuln_doc)
 
     # TBD hook in the original Snyk JSON data here (one for each project), for reference
@@ -180,7 +187,7 @@ def print_as_csv(openVulns, waiveredVulns):
                 print(f"{i + 1},{cwe_id},{v.id},{v.severity},{v.name},{v.title},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ""}")
 
 
-def testProject(args : argparse.Namespace):
+def _run_snyk_test(args : argparse.Namespace):
     # the 'include' arg is a delimited list of projects to be specifically included in the summary
     projects_list = None
     if args.include:
@@ -193,21 +200,30 @@ def testProject(args : argparse.Namespace):
         print(f"Scan failed with error [{snyk_manager.scan_error}]")
     else:
         waiveredVulns = snyk_manager.get_waivered_vulnerabilities()
-        if openVulns:
+        if openVulns or waiveredVulns:
             # if the config exists, create a jira api using the current git branch; the connection info comes from env vars
-            # use it to attach Jira ticket IDs to the open vulnerabilities
-            if "JIRA_SERVER" in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
+            # use it to attach Jira ticket IDs to the open and wiavered vulnerabilities
+            if "JIRA_SERVER" in os.environ and "JIRA_USER" in os.environ and "JIRA_API_TOKEN" in os.environ:
                 # get the open jiras that are for this branch
                 jira_query = JiraQuery( os.environ["JIRA_SERVER"],
                                         os.environ["JIRA_USER"],
                                         os.environ["JIRA_API_TOKEN"],
                                         args.name)
-                jira_query.attach_jira_ids(openVulns)
+                if openVulns:
+                    jira_query.attach_jira_ids(openVulns)
+                if waiveredVulns:
+                    jira_query.attach_jira_ids(waiveredVulns)
+        return snyk_manager.scan_timestamp, openVulns, waiveredVulns
 
-        if args.csv:
-            print_as_csv(openVulns, waiveredVulns)
-        else:
-            print_as_json(snyk_manager.scan_timestamp, openVulns, waiveredVulns)
+    return None,None
+
+
+def testProject(args : argparse.Namespace):
+    scan_timestamp, openVulns, waiveredVulns = _run_snyk_test(args)
+    if args.csv:
+        print_as_csv(openVulns, waiveredVulns)
+    else:
+        print_as_json(scan_timestamp, openVulns, waiveredVulns)
 
 
 def processReport(args : argparse.Namespace):
@@ -274,17 +290,35 @@ def listJiras(args : argparse.Namespace) :
     
 # accept a list of jiras and mark them as done
 def jiraMarkAsDone(args : argparse.Namespace) :
-    ticket_ids = [ t.strip() for t in args.ids.split(',') if t.strip() ]
+    if "JIRA_SERVER" not in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
+        print(f"JIRA_SERVER, JIRA_USER and JIRA_API_TOKEN must all be set in the environment in order to access Jira")
+        return
     
     jira_query = JiraQuery( os.environ["JIRA_SERVER"],
                             os.environ["JIRA_USER"],
                             os.environ["JIRA_API_TOKEN"],
                             args.name)
-    jira_query.mark_as_done(ticket_ids, args.comment)
+    jira_query.mark_as_done(args.id, args.comment)
+
+# accept a list of jiras and mark them as done
+def jiraWaiver(args : argparse.Namespace) :
+    if "JIRA_SERVER" not in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
+        print(f"JIRA_SERVER, JIRA_USER and JIRA_API_TOKEN must all be set in the environment in order to access Jira")
+        return
+    
+    jira_query = JiraQuery( os.environ["JIRA_SERVER"],
+                            os.environ["JIRA_USER"],
+                            os.environ["JIRA_API_TOKEN"],
+                            args.name)
+    jira_query.mark_as_waivered(args.id, args.cvss, args.reason)
 
 
 # utility command - get the available jira fields
 def jiraFields(args : argparse.Namespace) :
+    if "JIRA_SERVER" not in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
+        print(f"JIRA_SERVER, JIRA_USER and JIRA_API_TOKEN must all be set in the environment in order to access Jira")
+        return
+
     jira_query = JiraQuery( os.environ["JIRA_SERVER"],
                             os.environ["JIRA_USER"],
                             os.environ["JIRA_API_TOKEN"],
@@ -300,6 +334,80 @@ def jiraFields(args : argparse.Namespace) :
         json_doc["fields"][id] = name
         
     print(json.dumps(json_doc, indent=2))
+
+# synchronise the jira tickets with the current state of the project
+#   mark any resolved jiras as "Done"
+#   mark any waivered jiras as "Waiver provided"
+def jiraSync(args : argparse.Namespace) :
+    if "JIRA_SERVER" not in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
+        print(f"JIRA_SERVER, JIRA_USER and JIRA_API_TOKEN must all be set in the environment in order to access Jira")
+        return
+
+    # run a test and get the report
+    #  get the open vulns and the waivered vulns
+    scan_timestamp, openVulns, waiveredVulns = _run_snyk_test(args)
+    # convert to dictionaries, vulns indexed by jira_id
+    openVulns, waiveredVulns = ({obj.jira_id: obj for obj in s} for s in (openVulns, waiveredVulns))
+
+    # get the list of open Jira tickets
+    jira_query = JiraQuery( os.environ["JIRA_SERVER"],
+                            os.environ["JIRA_USER"],
+                            os.environ["JIRA_API_TOKEN"],
+                            args.name)
+    existing_jira_ids = set(jira_query.get_vuln_jira_ids())
+
+
+    #   open ticket does not appear in open or waivered vulns --> mark as done
+    #   open ticket appears in waivered vulns --> mark as waivered
+    #   open ticket appears open vulns --> leave alone (still unresolved)
+    open_jira_ids = set()
+    waivered_jira_ids = set()
+
+    for id in openVulns:
+        open_jira_ids.add(id)
+    for id in waiveredVulns:
+        waivered_jira_ids.add(id)
+
+    to_mark_as_done = existing_jira_ids - open_jira_ids - waivered_jira_ids
+    to_mark_as_waivered = existing_jira_ids.intersection(waivered_jira_ids)
+    to_leave_alone = existing_jira_ids.intersection(open_jira_ids)
+
+    if args.preflight:
+        json_doc = {}
+        json_doc['done'] = {}
+        json_doc['done']['num'] = len(to_mark_as_done)
+        json_doc['done']['jira'] = []
+        for id in to_mark_as_done:
+            json_doc['done']['jira'].append(id)
+
+        json_doc['waiver'] = {}
+        json_doc['waiver']['num'] = len(to_mark_as_waivered)
+        json_doc['waiver']['vulnerabilities'] = []      
+        for id in to_mark_as_waivered:
+            vuln_doc = {}
+            vuln_doc['jira_id'] = id
+            vuln_doc['reason'] = waiveredVulns.get(id).reason
+            vuln_doc['cvssVector'] = waiveredVulns.get(id).cvssVector
+            json_doc['waiver']['vulnerabilities'].append(vuln_doc)
+
+        json_doc['open'] = {}
+        json_doc['open']['num'] = len(to_leave_alone)
+        json_doc['open']['jira'] = []
+        for id in to_leave_alone:
+            json_doc['open']['jira'].append(id)
+
+        print(json.dumps(json_doc, indent=2))
+    else:
+        for id in to_mark_as_done:
+            jira_query.mark_as_done(id)
+
+        for id in to_mark_as_waivered:
+            jira_query.mark_as_waivered(id, 
+                                        waiveredVulns.get(id).cvssVector,
+                                        waiveredVulns.get(id).reason)
+        
+
+
 
 
 def _getRedundantIDs(waiver_manager: Waivers,snyk_manager: Snyk) -> list:
@@ -503,7 +611,7 @@ def main():
                                 default=None, 
                                 help='The scan name to use for executing the snyk test.')
 
-    # list open jira items for this branch
+    # mark a given list of jira tickets as 'done'
     jmad_parser = subparsers.add_parser(Command.JIRA_MARKASDONE, help='Mark Jira tickets for this project as Done')
     jmad_parser.add_argument('-v', '--verbose', 
                                 action='store_true', 
@@ -511,20 +619,72 @@ def main():
     jmad_parser.add_argument('-n', '--name', 
                                 default=None, 
                                 help='The scan name to use for executing the snyk test.')
-    jmad_parser.add_argument('-i', '--ids', 
+    jmad_parser.add_argument('-i', '--id', 
                                 default=None, 
                                 required=True,
-                                help='List of Jira IDs')
+                                help='The Jira ticket ID to be updated')
     jmad_parser.add_argument('-c', '--comment', 
                                 default=None, 
                                 required=True,
                                 help='Comment to attach to each ticket')
 
-    # list open jira items for this branch
+    # mark a given list of jira tickets as 'done'
+    jwav_parser = subparsers.add_parser(Command.JIRA_WAIVER_PROVIDED, help='Mark a Jira ticket as having had a waiver applied.')
+    jwav_parser.add_argument('-v', '--verbose', 
+                                action='store_true', 
+                                help='Output informational messages during processing.')
+    jwav_parser.add_argument('-n', '--name', 
+                                default=None, 
+                                help='The scan name to use for executing the snyk test.')
+    jwav_parser.add_argument('-i', '--id', 
+                                default=None, 
+                                required=True,
+                                help='The Jira ticket ID to be updated')
+    jwav_parser.add_argument('-c', '--cvss', 
+                                default=None, 
+                                required=True,
+                                help='CVSS vector')
+    jwav_parser.add_argument('-r', '--reason', 
+                                default=None, 
+                                required=True,
+                                help='The waiver text to be applied')
+
+    # list the fields available in jira (even ones we can't see on the UI)
+    # added this as I kept having to find the list of supported fields... not really snyk/vuln-related
     jfields_parser = subparsers.add_parser(Command.JIRAFIELDS, help='List the Jira fields')
     jfields_parser.add_argument('-v', '--verbose', 
                                 action='store_true', 
                                 help='Output informational messages during processing.')
+
+    # synchronise jira tickets with the current state of the project
+    jsync_parser = subparsers.add_parser(Command.JIRASYNC, help='Synchronise Jira with the current project state.')
+    jsync_parser.add_argument('-p', '--project', 
+                                default=None, 
+                                help='Project root directory (default: current directory)')
+    jsync_parser.add_argument('-w', '--waivers', 
+                                default=None, 
+                                help='Path to waivers file (default: .snyk)')
+    jsync_parser.add_argument('-i', '--include', 
+                                default=None, 
+                                help='Project names to be included in the test report')
+    jsync_parser.add_argument('-t', '--type', 
+                                default=None, 
+                                help='The type of project being scanned (dev or relpack)')
+    jsync_parser.add_argument('-n', '--name', 
+                                default=None, 
+                                help='The scan name to use for executing the snyk test.')
+    jsync_parser.add_argument('-v', '--verbose', 
+                                action='store_true', 
+                                help='Output informational messages during processing.')
+    jsync_parser.add_argument('-c', '--csv', 
+                                action='store_true', 
+                                help='Output the results in CSV format.')
+    jsync_parser.add_argument('-m', '--match', 
+                                default=None, 
+                                help='Vulnerability paths to include vulnerabilities for.')
+    jsync_parser.add_argument('-f', '--preflight', 
+                                action='store_true', 
+                                help='Do a pre-flight and output what will happen, but do not make any updates in Jira')
 
     # Parse arguments
     args = parser.parse_args()
@@ -567,6 +727,12 @@ def main():
 
     elif args.command == Command.JIRAFIELDS:
         jiraFields(args)
+
+    elif args.command == Command.JIRA_WAIVER_PROVIDED:
+        jiraWaiver(args)
+
+    elif args.command == Command.JIRASYNC:
+        jiraSync(args)
 
     # TBD jtidy command
     # runs a snyk test - vulns have their jira items assigned

@@ -15,6 +15,7 @@ class JiraFieldId(StrEnum):
     REQUIRES_REL_NOTE = "customfield_12324"
     REQUIRES_DOC_CHANGES = "customfield_12214"
     REL_NOTE = "customfield_11802"
+    CVSS_VECTOR = "customfield_11797"
 
 
 class JiraQuery:
@@ -36,7 +37,6 @@ class JiraQuery:
             self.jira = JIRA(server=self.server, basic_auth=(self.email, self.api_token))
         except Exception as e:
             logging.error(f"Failed to connect to Jira at {self.server}. Error: {e}")
-            # Ensure jira is None if connection fails
             self.jira = None
 
     def _get_current_git_branch(self, path: str = ".") -> str | None:
@@ -92,7 +92,7 @@ class JiraQuery:
             return []
 
         self.git_branch = self._get_current_git_branch(project_dir)
-        query_text = f"filter = {jira_filter} AND {JiraFieldId.STATUS} != Done AND {JiraFieldId.STATUS} != 'Waiver Provided' AND {JiraFieldId.STATUS} != 'Descope' AND {JiraFieldId.SUMMARY} ~ '{self.git_branch}'"
+        query_text = f"filter = {jira_filter} AND {JiraFieldId.STATUS} != Done AND {JiraFieldId.STATUS} != 'Waiver Provided' AND {JiraFieldId.STATUS} != 'Descope' AND {JiraFieldId.STATUS} != 'Closed Duplicate' AND {JiraFieldId.SUMMARY} ~ '{self.git_branch}'"
         logging.info(f"Executing JQL: {query_text}")
         try:
             issues = self.jira.search_issues(query_text, maxResults=False, fields=[JiraFieldId.SUMMARY, JiraFieldId.CREATED])
@@ -133,7 +133,10 @@ class JiraQuery:
                     v.jira_id = jira_index[vuln_cve]
                     break
 
-    def _prepare_for_status_change(self, issue: Issue) :
+    def _prepare_for_status_change(self, issue: Issue, extra_fields: dict = None) :
+        """
+        Updates mandatory fields. Optionally accepts extra_fields.
+        """
         issue_key = issue.key
         logging.info(f"Attempting to update mandatory fields for {issue_key}")
         
@@ -151,6 +154,9 @@ class JiraQuery:
             JiraFieldId.REQUIRES_REL_NOTE: {'value': 'No'},
             JiraFieldId.FIX_VERSION: [{'name': fix_version}]
         }
+
+        if extra_fields:
+            fields_to_update.update(extra_fields)
 
         try:
             issue.update(fields=fields_to_update)
@@ -183,51 +189,98 @@ class JiraQuery:
             logging.error(f"Error transitioning {issue_key}: {e.status_code} - {e.text}")
             return False
 
-    def mark_as_done(self, ids_list: list, comment: str = None):
+    def mark_as_done(self, ticket_id: str, comment: str = None):
         """
-        Marks Jira tickets as done and optionally adds a comment if the status changes.
+        Marks a single Jira ticket as done and optionally adds a comment.
         """
         if not self.jira:
             logging.warning("Cannot execute query. Jira connection is not active.")
             return
 
-        for ticket_id in ids_list:
-            try:
-                jira_issue = self.jira.issue(ticket_id, fields=[JiraFieldId.STATUS, JiraFieldId.SUMMARY])
-                current_status = jira_issue.fields.status.name
-                
-                if current_status.lower() == "done":
-                    logging.info(f"{ticket_id} is already 'Done' - nothing to do")
-                    continue
+        try:
+            jira_issue = self.jira.issue(ticket_id, fields=[JiraFieldId.STATUS, JiraFieldId.SUMMARY])
+            current_status = jira_issue.fields.status.name
+            
+            if current_status.lower() == "done":
+                logging.info(f"{ticket_id} is already 'Done' - nothing to do")
+                return
 
-                transitioned = False
+            transitioned = False
 
-                if current_status.lower() == "backlog" or current_status.lower() == "to do" :
-                    # Update fields and attempt multi-step transition
-                    if self._prepare_for_status_change(jira_issue):
-                        if self._transition_status(ticket_id, "In Progress"):
-                            if self._transition_status(ticket_id, "testing not required"):
+            if current_status.lower() in ["backlog", "to do"]:
+                if self._prepare_for_status_change(jira_issue):
+                    if self._transition_status(ticket_id, "In Progress"):
+                        if self._transition_status(ticket_id, "testing not required"):
+                            transitioned = True
+            
+            elif current_status.lower() == "in progress":
+                if self._transition_status(ticket_id, "testing not required"):
+                    transitioned = True
+            
+            else:
+                logging.warning(f"{ticket_id} has status '{current_status}'. Cannot mark as Done")
+
+            if transitioned and comment:
+                try:
+                    self.jira.add_comment(ticket_id, comment)
+                    logging.info(f"Successfully added comment to {ticket_id}")
+                except Exception as e:
+                    logging.warning(f"Status for {ticket_id} was updated, but the comment could not be applied. Error: {e}")
+
+        except JIRAError as e:
+            if e.status_code == 404:
+                logging.warning(f"{ticket_id} does not exist or permissions are missing.")
+            else:
+                logging.error(f"Failed to process {ticket_id}: {e.status_code} - {e.text}")
+        except Exception as e:
+            logging.error(f"An unexpected error occurred while processing {ticket_id}: {e}")
+
+    def mark_as_waivered(self, ticket_id: str, cvss_vector: str, comment: str = None):
+        """
+        Marks a single Jira ticket as waivered by updating the CVSS vector and transitions.
+        """
+        if not self.jira:
+            logging.warning("Cannot execute query. Jira connection is not active.")
+            return
+
+        try:
+            jira_issue = self.jira.issue(ticket_id, fields=[JiraFieldId.STATUS, JiraFieldId.SUMMARY])
+            current_status = jira_issue.fields.status.name
+            
+            if current_status.lower() == "waiver provided":
+                logging.info(f"{ticket_id} already has status 'Waiver Provided' - nothing to do")
+                return
+
+            extra_fields = {JiraFieldId.CVSS_VECTOR: cvss_vector}
+            transitioned = False
+
+            if current_status.lower() in ["backlog", "to do"]:
+                if self._prepare_for_status_change(jira_issue, extra_fields):
+                    if self._transition_status(ticket_id, "In Progress"):
+                        if self._transition_status(ticket_id, "testing not required"):
+                            if self._transition_status(ticket_id, "waiver provided"):
                                 transitioned = True
-                
-                elif current_status.lower() == "in progress":
+            
+            elif current_status.lower() == "in progress":
+                if self._prepare_for_status_change(jira_issue, extra_fields):
                     if self._transition_status(ticket_id, "testing not required"):
-                        transitioned = True
-                
-                else:
-                    logging.warning(f"{ticket_id} has status '{current_status}'. Cannot mark as Done")
+                        if self._transition_status(ticket_id, "waiver provided"):
+                            transitioned = True
+            
+            else:
+                logging.warning(f"{ticket_id} has status '{current_status}'. Cannot mark as Waivered")
 
-                # If the ticket state was changed successfully, add the comment if provided
-                if transitioned and comment:
-                    try:
-                        self.jira.add_comment(ticket_id, comment)
-                        logging.info(f"Successfully added comment to {ticket_id}")
-                    except Exception as e:
-                        logging.warning(f"Status for {ticket_id} was updated, but the comment could not be applied. Error: {e}")
+            if transitioned and comment:
+                try:
+                    self.jira.add_comment(ticket_id, comment)
+                    logging.info(f"Successfully added comment to {ticket_id}")
+                except Exception as e:
+                    logging.warning(f"Status for {ticket_id} was updated, but the comment could not be applied. Error: {e}")
 
-            except JIRAError as e:
-                if e.status_code == 404:
-                    logging.warning(f"{ticket_id} does not exist or permissions are missing.")
-                else:
-                    logging.error(f"Failed to process {ticket_id}: {e.status_code} - {e.text}")
-            except Exception as e:
-                logging.error(f"An unexpected error occurred while processing {ticket_id}: {e}")
+        except JIRAError as e:
+            if e.status_code == 404:
+                logging.warning(f"{ticket_id} does not exist or permissions are missing.")
+            else:
+                logging.error(f"Failed to process waiver for {ticket_id}: {e.status_code} - {e.text}")
+        except Exception as e:
+            logging.error(f"An unexpected error occurred while waivering {ticket_id}: {e}")
