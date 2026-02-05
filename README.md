@@ -42,6 +42,9 @@ It can be run from the command-line thus:
 |----|----|
 |`count`|Count the number of waivers in the waivers file|
 |`jlist`|List the Jira tickets that are currently open for the project|
+|`jmad`|Mark a Jira ticket for a security vulnerbility as 'Done'|
+|`jsync`|Synchronise security vulnerability Jira tickets with the current project|
+|`jwav`|Mark a Jira ticket for a security vulnerbility as 'Waiver Provided'|
 |`list`|List the IDs in the waivers file|
 |`red`|List the IDs of waivers that are redundant|
 |`rm`|Remove waivers from the waivers file|
@@ -72,7 +75,23 @@ Count the number of waivers in the waivers file.
 List the Jira tickets that are currently open for the project.
 
 ### jmad
-Given a list of Jira tickets, mark them all as "Done".
+Given a list of Jira ticket IDs, mark them all as "Done".
+
+This is a useful command for when a version of Corda has gone out of support but there are still Jira tickets lingering around. You can specify a comment via the -c argument, which will be added as a comment to each Jira ticket once the state has been updated.
+
+`sk jmad -n "os-relpack" -id "ENT-1234,ENT-4321,ENT-9999 -c "Corda 4.5 is now out of support."`
+
+This command sets all the required mandatory fields in order to progress the Jira tickets to 'Done'.
+
+### jsync
+Synchronises Jira tickets associated with the current project so that:
+* Jira tickets for vulnerabilities that have been waivered are marked as "Waiver Provided" and the waiver text is added to the Jira ticket as a comment
+* Jira tickets for vulnerabilities that are no longer reported are marked as "Done".
+* Jira tickets for vulnerabilities that are still reported are left in place.
+
+This is a powerful command that is best used when work has completed on addressing a tranche of vulnerabilities for a project and all the associated Jira tickets need to be updated.
+
+The `--preflight` option produces a JSON-formatted report indicating what updates would be made but without actually updating anything in Jira.
 
 ### list
 List the Snyk IDs of the waivered vulnerabilities found in the waivers file.
@@ -106,7 +125,7 @@ Perform a Snyk test on the project/sub-projects and generate a report describing
 ## Scan Configurations
 Scan configurations are preset collections of options for running the the tool with. It was introduced at a point in the application's development where it seemed like the number of command line arguments would explode, and remembering them (and typing them in) would become boring.
 
-Scan configurations are stored in a configuraion file that the user sets up. The location of the file must be specified in the environment variable `SNYK_R3_SCAN_CONFIG`. An example configuration file can be found in the examples directory of this repository.
+Scan configurations are stored in a configuraion file that the user sets up. The location of the file must be specified in the environment variable `SNYK_R3_SCAN_CONFIG`. An example configuration file can be found in the `examples` directory of this repository.
 
 The scan configuration is a JSON-formatted file consisting of the following top-level sections:
 * `configuration` - a set of general configuration options for the application
@@ -125,7 +144,7 @@ When the Snyk tool is run with the `sum` or `test` commands, it executes the Sny
 With `dump_snyk` enabled, the original Snyk report is captured in `~/.r3cache/snyk`. This can be useful when developing new features in the R3 tool, or just to verify the R3 report is correct (if there is any doubt). The original report is captured into a compressed ZIP file whose name is the timestamp of the report, as indicated by the `timestamp` attribute at the top of the report.
 
 #### `fix_version_mapping`
-This setting is used by the Jira-related commands `jmad` to map a Git branch to the text that needs to be set in the "Fix Versions" field in a Jira ticket. 
+This setting is used by the Jira-related commands to map a Git branch to the text that needs to be set in the "Fix Versions" field in a Jira ticket. 
 
 ### scans
 A collection of named scans. Each scan can contain the following sub-elements:

@@ -293,14 +293,16 @@ def jiraMarkAsDone(args : argparse.Namespace) :
     if "JIRA_SERVER" not in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
         print(f"JIRA_SERVER, JIRA_USER and JIRA_API_TOKEN must all be set in the environment in order to access Jira")
         return
+    ticket_ids = [ t.strip() for t in args.ids.split(',') if t.strip() ]
     
     jira_query = JiraQuery( os.environ["JIRA_SERVER"],
                             os.environ["JIRA_USER"],
                             os.environ["JIRA_API_TOKEN"],
                             args.name)
-    jira_query.mark_as_done(args.id, args.comment)
+    for id in args.ids:
+        jira_query.mark_as_done(id, args.comment)
 
-# accept a list of jiras and mark them as done
+# accept a list of jiras and mark them as waivered
 def jiraWaiver(args : argparse.Namespace) :
     if "JIRA_SERVER" not in os.environ or "JIRA_USER" not in os.environ or "JIRA_API_TOKEN" not in os.environ:
         print(f"JIRA_SERVER, JIRA_USER and JIRA_API_TOKEN must all be set in the environment in order to access Jira")
@@ -619,10 +621,10 @@ def main():
     jmad_parser.add_argument('-n', '--name', 
                                 default=None, 
                                 help='The scan name to use for executing the snyk test.')
-    jmad_parser.add_argument('-i', '--id', 
+    jmad_parser.add_argument('-i', '--ids', 
                                 default=None, 
                                 required=True,
-                                help='The Jira ticket ID to be updated')
+                                help='List of Jira ticket IDs to be updated')
     jmad_parser.add_argument('-c', '--comment', 
                                 default=None, 
                                 required=True,
