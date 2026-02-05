@@ -355,13 +355,16 @@ def jiraSync(args : argparse.Namespace) :
     jira_query = JiraQuery( os.environ["JIRA_SERVER"],
                             os.environ["JIRA_USER"],
                             os.environ["JIRA_API_TOKEN"],
-                            args.name)
+                            args.name,
+                            args.preflight)
     existing_jira_ids = set(jira_query.get_vuln_jira_ids())
 
 
     #   open ticket does not appear in open or waivered vulns --> mark as done
     #   open ticket appears in waivered vulns --> mark as waivered
     #   open ticket appears open vulns --> leave alone (still unresolved)
+    #
+    # TBD - verify existing closed/waivered tickets are in the correct state
     open_jira_ids = set()
     waivered_jira_ids = set()
 
@@ -374,42 +377,13 @@ def jiraSync(args : argparse.Namespace) :
     to_mark_as_waivered = existing_jira_ids.intersection(waivered_jira_ids)
     to_leave_alone = existing_jira_ids.intersection(open_jira_ids)
 
-    if args.preflight:
-        json_doc = {}
-        json_doc['done'] = {}
-        json_doc['done']['num'] = len(to_mark_as_done)
-        json_doc['done']['jira'] = []
-        for id in to_mark_as_done:
-            json_doc['done']['jira'].append(id)
+    for id in to_mark_as_done:
+        jira_query.mark_as_done(id)
 
-        json_doc['waiver'] = {}
-        json_doc['waiver']['num'] = len(to_mark_as_waivered)
-        json_doc['waiver']['vulnerabilities'] = []      
-        for id in to_mark_as_waivered:
-            vuln_doc = {}
-            vuln_doc['jira_id'] = id
-            vuln_doc['reason'] = waiveredVulns.get(id).reason
-            vuln_doc['cvssVector'] = waiveredVulns.get(id).cvssVector
-            json_doc['waiver']['vulnerabilities'].append(vuln_doc)
-
-        json_doc['open'] = {}
-        json_doc['open']['num'] = len(to_leave_alone)
-        json_doc['open']['jira'] = []
-        for id in to_leave_alone:
-            json_doc['open']['jira'].append(id)
-
-        print(json.dumps(json_doc, indent=2))
-    else:
-        for id in to_mark_as_done:
-            jira_query.mark_as_done(id)
-
-        for id in to_mark_as_waivered:
-            jira_query.mark_as_waivered(id, 
-                                        waiveredVulns.get(id).cvssVector,
-                                        waiveredVulns.get(id).reason)
-        
-
-
+    for id in to_mark_as_waivered:
+        jira_query.mark_as_waivered(id, 
+                                    waiveredVulns.get(id).cvssVector,
+                                    waiveredVulns.get(id).reason)
 
 
 def _getRedundantIDs(waiver_manager: Waivers,snyk_manager: Snyk) -> list:

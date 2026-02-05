@@ -23,13 +23,14 @@ class JiraQuery:
     A class to manage the connection and execution of JQL queries 
     against a Jira instance.
     """
-    def __init__(self, server: str, email: str, api_token: str, scan_name : str):
+    def __init__(self, server: str, email: str, api_token: str, scan_name : str, preflight: bool = False):
         self.server = server
         self.email = email
         self.api_token = api_token
         self.jira = None
         self.scan_name = scan_name
         self.git_branch = None
+        self.preflight = preflight # Flag to toggle update execution
         
         try:
             # Establish the connection using basic authentication (email + API token)
@@ -41,7 +42,7 @@ class JiraQuery:
 
     def _get_current_git_branch(self, path: str = ".") -> str | None:
         """
-        Retrieves the name of the current Git branch for the repository at the given path.
+        Retrieves the name of the current Git branch.
         """
         try:
             result = subprocess.run(
@@ -92,7 +93,7 @@ class JiraQuery:
             return []
 
         self.git_branch = self._get_current_git_branch(project_dir)
-        query_text = f"filter = {jira_filter} AND {JiraFieldId.STATUS} != Done AND {JiraFieldId.STATUS} != 'Waiver Provided' AND {JiraFieldId.STATUS} != 'Descope' AND {JiraFieldId.STATUS} != 'Closed Duplicate' AND {JiraFieldId.SUMMARY} ~ '{self.git_branch}'"
+        query_text = f"filter = {jira_filter} AND {JiraFieldId.STATUS} != Done AND {JiraFieldId.STATUS} != 'Waiver Provided' AND {JiraFieldId.STATUS} != 'Descope' AND {JiraFieldId.SUMMARY} ~ '{self.git_branch}'"
         logging.info(f"Executing JQL: {query_text}")
         try:
             issues = self.jira.search_issues(query_text, maxResults=False, fields=[JiraFieldId.SUMMARY, JiraFieldId.CREATED])
@@ -135,10 +136,9 @@ class JiraQuery:
 
     def _prepare_for_status_change(self, issue: Issue, extra_fields: dict = None) :
         """
-        Updates mandatory fields. Optionally accepts extra_fields.
+        Updates mandatory fields or prints them in preflight mode.
         """
         issue_key = issue.key
-        logging.info(f"Attempting to update mandatory fields for {issue_key}")
         
         scan_config = ScanConfiguration()
         project_dir = "."
@@ -158,7 +158,12 @@ class JiraQuery:
         if extra_fields:
             fields_to_update.update(extra_fields)
 
+        if self.preflight:
+            print(f"[PREFLIGHT] Would update {issue_key} with fields: {fields_to_update}")
+            return True
+
         try:
+            logging.info(f"Attempting to update mandatory fields for {issue_key}")
             issue.update(fields=fields_to_update)
             logging.info(f"Successfully updated fields for {issue_key}.")
             return True
@@ -170,6 +175,10 @@ class JiraQuery:
             return False
 
     def _transition_status(self, issue_key: str, new_status: str) -> bool:
+        if self.preflight:
+            print(f"[PREFLIGHT] Would transition {issue_key} to state: [{new_status}]")
+            return True
+
         logging.info(f"Attempting to apply [{new_status}] transition {issue_key}...")
         try:
             transitions = self.jira.transitions(issue_key)
@@ -191,7 +200,7 @@ class JiraQuery:
 
     def mark_as_done(self, ticket_id: str, comment: str = None):
         """
-        Marks a single Jira ticket as done and optionally adds a comment.
+        Marks a single Jira ticket as done or describes the action in preflight.
         """
         if not self.jira:
             logging.warning("Cannot execute query. Jira connection is not active.")
@@ -221,11 +230,14 @@ class JiraQuery:
                 logging.warning(f"{ticket_id} has status '{current_status}'. Cannot mark as Done")
 
             if transitioned and comment:
-                try:
-                    self.jira.add_comment(ticket_id, comment)
-                    logging.info(f"Successfully added comment to {ticket_id}")
-                except Exception as e:
-                    logging.warning(f"Status for {ticket_id} was updated, but the comment could not be applied. Error: {e}")
+                if self.preflight:
+                    print(f"[PREFLIGHT] Would add comment to {ticket_id}: {comment}")
+                else:
+                    try:
+                        self.jira.add_comment(ticket_id, comment)
+                        logging.info(f"Successfully added comment to {ticket_id}")
+                    except Exception as e:
+                        logging.warning(f"Status for {ticket_id} was updated, but the comment could not be applied. Error: {e}")
 
         except JIRAError as e:
             if e.status_code == 404:
@@ -237,7 +249,7 @@ class JiraQuery:
 
     def mark_as_waivered(self, ticket_id: str, cvss_vector: str, comment: str = None):
         """
-        Marks a single Jira ticket as waivered by updating the CVSS vector and transitions.
+        Marks a ticket as waivered or describes the action in preflight.
         """
         if not self.jira:
             logging.warning("Cannot execute query. Jira connection is not active.")
@@ -271,11 +283,14 @@ class JiraQuery:
                 logging.warning(f"{ticket_id} has status '{current_status}'. Cannot mark as Waivered")
 
             if transitioned and comment:
-                try:
-                    self.jira.add_comment(ticket_id, comment)
-                    logging.info(f"Successfully added comment to {ticket_id}")
-                except Exception as e:
-                    logging.warning(f"Status for {ticket_id} was updated, but the comment could not be applied. Error: {e}")
+                if self.preflight:
+                    print(f"[PREFLIGHT] Would add comment to {ticket_id}: {comment}")
+                else:
+                    try:
+                        self.jira.add_comment(ticket_id, comment)
+                        logging.info(f"Successfully added comment to {ticket_id}")
+                    except Exception as e:
+                        logging.warning(f"Status for {ticket_id} was updated, but the comment could not be applied. Error: {e}")
 
         except JIRAError as e:
             if e.status_code == 404:
@@ -284,3 +299,4 @@ class JiraQuery:
                 logging.error(f"Failed to process waiver for {ticket_id}: {e.status_code} - {e.text}")
         except Exception as e:
             logging.error(f"An unexpected error occurred while waivering {ticket_id}: {e}")
+            
