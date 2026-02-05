@@ -299,7 +299,7 @@ def jiraMarkAsDone(args : argparse.Namespace) :
                             os.environ["JIRA_USER"],
                             os.environ["JIRA_API_TOKEN"],
                             args.name)
-    for id in args.ids:
+    for id in ticket_ids:
         jira_query.mark_as_done(id, args.comment)
 
 # accept a list of jiras and mark them as waivered
