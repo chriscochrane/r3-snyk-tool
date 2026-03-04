@@ -133,6 +133,12 @@ class JiraQuery:
                 if vuln_cve in jira_index:
                     v.jira_id = jira_index[vuln_cve]
                     break
+            # if the vuln jira ID isn't set from the CVE, try the CWE instead. 
+            if not v.jira_id:
+                for vuln_cwe in v.cwe:
+                    if vuln_cwe in jira_index:
+                        v.jira_id = jira_index[vuln_cwe]
+                        break
 
     def _prepare_for_status_change(self, issue: Issue, extra_fields: dict = None) :
         """

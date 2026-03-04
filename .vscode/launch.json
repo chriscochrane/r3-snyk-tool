@@ -13,16 +13,10 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "jwav",
+                "test",
                 "-n",
-                "cenm-relpack",
-                "-v",
-                "-i",
-                "ENT-12620",
-                "-r",
-                "CVE-2023-52428: This issue is resolved by a TuxCare version of org.springframework.security, version 5.8.16.tuxcare",
-                "-c",
-                "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+                "os-relpack",
+                "-v"
             ]
         }
     ]
