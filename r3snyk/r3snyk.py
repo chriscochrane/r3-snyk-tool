@@ -148,6 +148,7 @@ def print_as_json(scan_timestamp, openVulns, waiveredVulns):
         vuln_doc["cwe"] = v.cwe
         vuln_doc["cve"] = v.cve
         vuln_doc["cvssVector"] = v.cvssVector
+        vuln_doc['publishedDate'] = v.publishedDate
         vuln_doc["jira_id"] = v.jira_id if v.jira_id is not None else ""
         paths_list = []
         for j, path in enumerate(v.paths):
@@ -168,23 +169,22 @@ def print_as_json(scan_timestamp, openVulns, waiveredVulns):
         vuln_doc["jira_id"] = v.jira_id if v.jira_id is not None else ""
         vuln_doc["cve"] = v.cve
         vuln_doc["cvssVector"] = v.cvssVector
+        vuln_doc['publishedDate'] = v.publishedDate
         vuln_doc["reason"] = v.reason
         json_doc["waivered"]["vulnerabilities"].append(vuln_doc)
-
-    # TBD hook in the original Snyk JSON data here (one for each project), for reference
 
     print(json.dumps(json_doc, indent=2))
 
 
 def print_as_csv(openVulns, waiveredVulns):
-    print("Num,CVE,SNYK,Sev,Where,Title,Requires,Jira")
+    print("Num,CVE,SNYK,Sev,Where,Title,Published,Requires,Jira")
     for i, v in enumerate(openVulns):
         if v.cve:
             for cve_id in v.cve:
-                print(f"{i + 1},{cve_id},{v.id},{v.severity},{v.name},{v.title},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ""}")
+                print(f"{i + 1},{cve_id},{v.id},{v.severity},{v.name},{v.title},{v.publishedDate},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ""}")
         else:
             for cwe_id in v.cwe:
-                print(f"{i + 1},{cwe_id},{v.id},{v.severity},{v.name},{v.title},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ""}")
+                print(f"{i + 1},{cwe_id},{v.id},{v.severity},{v.name},{v.title},{v.publishedDate},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ""}")
 
 
 def _run_snyk_test(args : argparse.Namespace):
