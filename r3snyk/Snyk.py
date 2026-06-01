@@ -127,10 +127,13 @@ class Snyk:
         jsonLogger = None
         if self.dump_snyk:
             jsonLogger = JsonLogWriter(self.scan_timestamp)
+
+        pCount = 0
         
         for p in projects_to_scan:
+            pCount += 1
             # Run actual Snyk test with specified options
-            logging.info(f"scanning project [{p}]")
+            logging.info(f"scanning project [{p}] [{pCount}/{len(projects_to_scan)}]")
             params = ['snyk', 'test', self.project_dir, 
                     '--show-vulnerable-paths=all', 
                     '--json'

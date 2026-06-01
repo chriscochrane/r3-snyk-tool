@@ -129,12 +129,13 @@ class JiraQuery:
             jira_index[cve_id] = ji.key
 
         for v in vulns:
-            for vuln_cve in v.cve:
-                if vuln_cve in jira_index:
-                    v.jira_id = jira_index[vuln_cve]
-                    break
-            # if the vuln jira ID isn't set from the CVE, try the CWE instead. 
-            if not v.jira_id:
+            if v.cve:
+                for vuln_cve in v.cve:
+                    if vuln_cve in jira_index:
+                        v.jira_id = jira_index[vuln_cve]
+                        break
+            elif v.cwe:
+                # try the CWE instead. 
                 for vuln_cwe in v.cwe:
                     if vuln_cwe in jira_index:
                         v.jira_id = jira_index[vuln_cwe]

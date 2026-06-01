@@ -215,7 +215,7 @@ def _run_snyk_test(args : argparse.Namespace):
                     jira_query.attach_jira_ids(waiveredVulns)
         return snyk_manager.scan_timestamp, openVulns, waiveredVulns
 
-    return None,None
+    return None,None,None
 
 
 def testProject(args : argparse.Namespace):
