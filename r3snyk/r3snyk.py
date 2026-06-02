@@ -91,15 +91,19 @@ def summariseProject(args : argparse.Namespace):
     waiveredVulns = snyk_manager.get_waivered_vulnerabilities()
     allVulns = openVulns.union(waiveredVulns)
 
-    # split the vulns into critical,high,medium,low
-    (allCrit,allHigh,allMed,allLow) = _categoriseVulnerabilities(allVulns)
-    (openCrit,openHigh,openMed,openLow) = _categoriseVulnerabilities(openVulns)
-    (waiveredCrit,waiveredHigh,waiveredMed,waiveredLow) = _categoriseVulnerabilities(waiveredVulns)
+    if snyk_manager.scan_error:
+        print(f"Scan failed, error was:")
+        print(f"{snyk_manager.scan_error}")
+    else:
+        # split the vulns into critical,high,medium,low
+        (allCrit,allHigh,allMed,allLow) = _categoriseVulnerabilities(allVulns)
+        (openCrit,openHigh,openMed,openLow) = _categoriseVulnerabilities(openVulns)
+        (waiveredCrit,waiveredHigh,waiveredMed,waiveredLow) = _categoriseVulnerabilities(waiveredVulns)
 
-    # output the counts as crit,high,medium,low (total)
-    print(f"All,{len(allCrit)},{len(allHigh)},{len(allMed)},{len(allLow)} ({len(allCrit)+len(allHigh)+len(allMed)+len(allLow)})")
-    print(f"Waiv,{len(waiveredCrit)},{len(waiveredHigh)},{len(waiveredMed)},{len(waiveredLow)} ({len(waiveredCrit)+len(waiveredHigh)+len(waiveredMed)+len(waiveredLow)})")
-    print(f"Open,{len(openCrit)},{len(openHigh)},{len(openMed)},{len(openLow)} ({len(openCrit)+len(openHigh)+len(openMed)+len(openLow)})")
+        # output the counts as crit,high,medium,low (total)
+        print(f"All,{len(allCrit)},{len(allHigh)},{len(allMed)},{len(allLow)} ({len(allCrit)+len(allHigh)+len(allMed)+len(allLow)})")
+        print(f"Waiv,{len(waiveredCrit)},{len(waiveredHigh)},{len(waiveredMed)},{len(waiveredLow)} ({len(waiveredCrit)+len(waiveredHigh)+len(waiveredMed)+len(waiveredLow)})")
+        print(f"Open,{len(openCrit)},{len(openHigh)},{len(openMed)},{len(openLow)} ({len(openCrit)+len(openHigh)+len(openMed)+len(openLow)})")
 
 def _generate_unique_random_string(length: int = 24) -> str:
     """
@@ -197,7 +201,7 @@ def _run_snyk_test(args : argparse.Namespace):
     # get the open and waivered vulns
     openVulns = snyk_manager.get_open_vulnerabilities(match_path=args.match)
     if snyk_manager.scan_error:
-        print(f"Scan failed with error [{snyk_manager.scan_error}]")
+        return snyk_manager.scan_error,None,None,None
     else:
         waiveredVulns = snyk_manager.get_waivered_vulnerabilities()
         if openVulns or waiveredVulns:
@@ -213,14 +217,17 @@ def _run_snyk_test(args : argparse.Namespace):
                     jira_query.attach_jira_ids(openVulns)
                 if waiveredVulns:
                     jira_query.attach_jira_ids(waiveredVulns)
-        return snyk_manager.scan_timestamp, openVulns, waiveredVulns
-
-    return None,None,None
+        return None,snyk_manager.scan_timestamp, openVulns, waiveredVulns
+    # shouldn't get here, but just in case..
+    return None,None,None,None
 
 
 def testProject(args : argparse.Namespace):
-    scan_timestamp, openVulns, waiveredVulns = _run_snyk_test(args)
-    if args.csv:
+    scan_error, scan_timestamp, openVulns, waiveredVulns = _run_snyk_test(args)
+    if scan_error:
+        print(f"Scan failed, error was:")
+        print(f"{scan_error}")
+    elif args.csv:
         print_as_csv(openVulns, waiveredVulns)
     else:
         print_as_json(scan_timestamp, openVulns, waiveredVulns)
@@ -349,41 +356,45 @@ def jiraSync(args : argparse.Namespace) :
     #  get the open vulns and the waivered vulns
     scan_timestamp, openVulns, waiveredVulns = _run_snyk_test(args)
     # convert to dictionaries, vulns indexed by jira_id
-    openVulns, waiveredVulns = ({obj.jira_id: obj for obj in s} for s in (openVulns, waiveredVulns))
+    scan_error, openVulns, waiveredVulns = ({obj.jira_id: obj for obj in s} for s in (openVulns, waiveredVulns))
 
-    # get the list of open Jira tickets
-    jira_query = JiraQuery( os.environ["JIRA_SERVER"],
-                            os.environ["JIRA_USER"],
-                            os.environ["JIRA_API_TOKEN"],
-                            args.name,
-                            args.preflight)
-    existing_jira_ids = set(jira_query.get_vuln_jira_ids())
+    if scan_error:
+        print(f"Scan failed, error was:")
+        print(f"{scan_error}")
+    else:
+        # get the list of open Jira tickets
+        jira_query = JiraQuery( os.environ["JIRA_SERVER"],
+                                os.environ["JIRA_USER"],
+                                os.environ["JIRA_API_TOKEN"],
+                                args.name,
+                                args.preflight)
+        existing_jira_ids = set(jira_query.get_vuln_jira_ids())
 
 
-    #   open ticket does not appear in open or waivered vulns --> mark as done
-    #   open ticket appears in waivered vulns --> mark as waivered
-    #   open ticket appears open vulns --> leave alone (still unresolved)
-    #
-    # TBD - verify existing closed/waivered tickets are in the correct state
-    open_jira_ids = set()
-    waivered_jira_ids = set()
+        #   open ticket does not appear in open or waivered vulns --> mark as done
+        #   open ticket appears in waivered vulns --> mark as waivered
+        #   open ticket appears open vulns --> leave alone (still unresolved)
+        #
+        # TBD - verify existing closed/waivered tickets are in the correct state
+        open_jira_ids = set()
+        waivered_jira_ids = set()
 
-    for id in openVulns:
-        open_jira_ids.add(id)
-    for id in waiveredVulns:
-        waivered_jira_ids.add(id)
+        for id in openVulns:
+            open_jira_ids.add(id)
+        for id in waiveredVulns:
+            waivered_jira_ids.add(id)
 
-    to_mark_as_done = existing_jira_ids - open_jira_ids - waivered_jira_ids
-    to_mark_as_waivered = existing_jira_ids.intersection(waivered_jira_ids)
-    to_leave_alone = existing_jira_ids.intersection(open_jira_ids)
+        to_mark_as_done = existing_jira_ids - open_jira_ids - waivered_jira_ids
+        to_mark_as_waivered = existing_jira_ids.intersection(waivered_jira_ids)
+        to_leave_alone = existing_jira_ids.intersection(open_jira_ids)
 
-    for id in to_mark_as_done:
-        jira_query.mark_as_done(id)
+        for id in to_mark_as_done:
+            jira_query.mark_as_done(id)
 
-    for id in to_mark_as_waivered:
-        jira_query.mark_as_waivered(id, 
-                                    waiveredVulns.get(id).cvssVector,
-                                    waiveredVulns.get(id).reason)
+        for id in to_mark_as_waivered:
+            jira_query.mark_as_waivered(id, 
+                                        waiveredVulns.get(id).cvssVector,
+                                        waiveredVulns.get(id).reason)
 
 
 def _getRedundantIDs(waiver_manager: Waivers,snyk_manager: Snyk) -> list:

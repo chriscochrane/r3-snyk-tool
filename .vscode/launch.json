@@ -15,8 +15,7 @@
             "args": [
                 "test",
                 "-n",
-                "os-relpack",
-                "-v"
+                "corda-os-test"
             ]
         }
     ]
