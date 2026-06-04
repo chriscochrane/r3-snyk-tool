@@ -263,9 +263,9 @@ def listScans(args : argparse.Namespace) :
 
     json_doc = {}
     json_doc["num"] = len(scans)
-    json_doc["scans"] = []
+    json_doc["scans"] = {}
     for sName in scans:
-        json_doc["scans"].append(sName)
+        json_doc["scans"][sName] = scans[sName]
     
     print(json.dumps(json_doc, indent=2))
 

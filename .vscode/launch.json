@@ -13,9 +13,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "test",
-                "-n",
-                "corda-os-test"
+                "slist"
             ]
         }
     ]

@@ -48,10 +48,10 @@ class ScanConfiguration:
         return self.json_data["scans"][scan_name][property_name]
 
     def get_scan_names(self):
-        scansList = []
+        scansList = {}
 
         for name in self.json_data["scans"]:
-            scansList.append(name)
+            scansList[name] = self.json_data["scans"][name]["description"]
         return scansList
 
     def dump_snyk_is_active(self) -> bool:
