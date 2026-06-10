@@ -33,7 +33,8 @@ class Command(StrEnum):
     JIRA_MARKASDONE = "jmad",
     JIRA_WAIVER_PROVIDED = "jwav",
     JIRAFIELDS = "jfields",
-    JIRASYNC = "jsync"
+    JIRASYNC = "jsync",
+    JSON2CSV = "json2csv"
 
 
 def _configure_logging(args :argparse.Namespace):
@@ -185,10 +186,34 @@ def print_as_csv(openVulns, waiveredVulns):
     for i, v in enumerate(openVulns):
         if v.cve:
             for cve_id in v.cve:
-                print(f"{i + 1},{cve_id},{v.id},{v.severity},{v.name},{v.title},{v.publishedDate},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ""}")
+                print(f"{i + 1},{cve_id},{v.id},{v.severity},{v.name},{v.title},{v.publishedDate},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ''}")
         else:
             for cwe_id in v.cwe:
-                print(f"{i + 1},{cwe_id},{v.id},{v.severity},{v.name},{v.title},{v.publishedDate},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ""}")
+                print(f"{i + 1},{cwe_id},{v.id},{v.severity},{v.name},{v.title},{v.publishedDate},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ''}")
+
+
+def convertJsonToCsv(args : argparse.Namespace):
+    try:
+        with open(args.file, 'r') as f:
+            json_doc = json.load(f)
+    except FileNotFoundError:
+        print(f"Error: file not found: {args.file}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"Error: failed to parse JSON: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    print("Num,CVE,SNYK,Sev,Where,Title,Published,Requires,Jira")
+    open_vulns = json_doc.get("open", {}).get("vulnerabilities", [])
+    for i, v in enumerate(open_vulns):
+        cve_list = v.get("cve") or []
+        cwe_list = v.get("cwe") or []
+        ids_to_print = cve_list if cve_list else cwe_list
+        fixed = v.get("fixed", [])
+        requires = ' or '.join(str(x) for x in fixed)
+        jira_id = v.get("jira_id", "")
+        for vuln_id in ids_to_print:
+            print(f"{i + 1},{vuln_id},{v['snyk']},{v['severity']},{v['name']},{v['title']},{v['publishedDate']},{requires},{jira_id}")
 
 
 def _run_snyk_test(args : argparse.Namespace):
@@ -227,8 +252,6 @@ def testProject(args : argparse.Namespace):
     if scan_error:
         print(f"Scan failed, error was:")
         print(f"{scan_error}")
-    elif args.csv:
-        print_as_csv(openVulns, waiveredVulns)
     else:
         print_as_json(scan_timestamp, openVulns, waiveredVulns)
 
@@ -525,12 +548,9 @@ def main():
     test_parser.add_argument('-n', '--name', 
                                 default=None, 
                                 help='The scan name to use for executing the snyk test.')
-    test_parser.add_argument('-v', '--verbose', 
-                                action='store_true', 
+    test_parser.add_argument('-v', '--verbose',
+                                action='store_true',
                                 help='Output informational messages during processing.')
-    test_parser.add_argument('-c', '--csv', 
-                                action='store_true', 
-                                help='Output the results in CSV format.')
     test_parser.add_argument('-m', '--match',
                                 default=None,
                                 help='Vulnerability paths to include vulnerabilities for.')
@@ -668,18 +688,25 @@ def main():
     jsync_parser.add_argument('-n', '--name', 
                                 default=None, 
                                 help='The scan name to use for executing the snyk test.')
-    jsync_parser.add_argument('-v', '--verbose', 
-                                action='store_true', 
+    jsync_parser.add_argument('-v', '--verbose',
+                                action='store_true',
                                 help='Output informational messages during processing.')
-    jsync_parser.add_argument('-c', '--csv', 
-                                action='store_true', 
-                                help='Output the results in CSV format.')
-    jsync_parser.add_argument('-m', '--match', 
+    jsync_parser.add_argument('-m', '--match',
                                 default=None, 
                                 help='Vulnerability paths to include vulnerabilities for.')
     jsync_parser.add_argument('-f', '--preflight', 
                                 action='store_true', 
                                 help='Do a pre-flight and output what will happen, but do not make any updates in Jira')
+
+    #
+    # json2csv subcommand - convert a JSON report file to CSV output
+    #
+    json2csv_parser = subparsers.add_parser(Command.JSON2CSV, help='Convert a JSON report file to CSV (output to stdout)')
+    json2csv_parser.add_argument('file',
+                                 help='Path to the JSON report file')
+    json2csv_parser.add_argument('-v', '--verbose',
+                                 action='store_true',
+                                 help='Output informational messages during processing.')
 
     # Parse arguments
     args = parser.parse_args()
@@ -728,6 +755,9 @@ def main():
 
     elif args.command == Command.JIRASYNC:
         jiraSync(args)
+
+    elif args.command == Command.JSON2CSV:
+        convertJsonToCsv(args)
 
     # TBD jtidy command
     # runs a snyk test - vulns have their jira items assigned
