@@ -84,7 +84,7 @@ def summariseProject(args : argparse.Namespace):
     if args.include != "":
         projects_list = set(args.include.split(","))
 
-    snyk_manager = Snyk(project_dir=args.project,user_projects=projects_list,scan_type=args.type,scan_name=args.name)
+    snyk_manager = Snyk(project_dir=args.project,user_projects=projects_list,scan_type=args.type,scan_name=args.name,threads=args.threads)
 
     # get the open and waivered vulns
     openVulns = snyk_manager.get_open_vulnerabilities(match_path=args.match)
@@ -197,7 +197,7 @@ def _run_snyk_test(args : argparse.Namespace):
     if args.include:
         projects_list = set(args.include.split(","))
 
-    snyk_manager = Snyk(project_dir=args.project,user_projects=projects_list,scan_type=args.type,scan_name=args.name)
+    snyk_manager = Snyk(project_dir=args.project,user_projects=projects_list,scan_type=args.type,scan_name=args.name,threads=args.threads)
     # get the open and waivered vulns
     openVulns = snyk_manager.get_open_vulnerabilities(match_path=args.match)
     if snyk_manager.scan_error:
@@ -531,9 +531,13 @@ def main():
     test_parser.add_argument('-c', '--csv', 
                                 action='store_true', 
                                 help='Output the results in CSV format.')
-    test_parser.add_argument('-m', '--match', 
-                                default=None, 
+    test_parser.add_argument('-m', '--match',
+                                default=None,
                                 help='Vulnerability paths to include vulnerabilities for.')
+    test_parser.add_argument('-j', '--threads',
+                                default=1,
+                                type=int,
+                                help='Number of threads to use for parallel sub-project scanning (default: 1).')
 
     #
     # Summary subcommand with optional arguments
@@ -565,9 +569,13 @@ def main():
     run_parser.add_argument('-v', '--verbose', 
                                 action='store_true', 
                                 help='Output informational messages during processing.')
-    run_parser.add_argument('-m', '--match', 
-                                default=None, 
+    run_parser.add_argument('-m', '--match',
+                                default=None,
                                 help='Vulnerability paths to include vulnerabilities for.')
+    run_parser.add_argument('-j', '--threads',
+                                default=1,
+                                type=int,
+                                help='Number of threads to use for parallel sub-project scanning (default: 1).')
 
     # report processing
     rep_parser = subparsers.add_parser(Command.REPORT, help='Filter/process a vulnerability report')
