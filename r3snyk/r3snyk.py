@@ -37,9 +37,19 @@ class Command(StrEnum):
     JSON2CSV = "json2csv"
 
 
+class _CentisecondFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        ct = self.converter(record.created)
+        t = datetime.fromtimestamp(record.created)
+        return t.strftime('%H:%M:%S.') + f'{t.microsecond // 10000:02d}'
+
+
 def _configure_logging(args :argparse.Namespace):
     if args.verbose:
-        logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+        handler = logging.StreamHandler()
+        handler.setFormatter(_CentisecondFormatter('%(asctime)s %(levelname)s: %(message)s'))
+        logging.getLogger().addHandler(handler)
+        logging.getLogger().setLevel(logging.INFO)
     else:
         null_handler = logging.NullHandler()
         logging.getLogger().addHandler(null_handler)
