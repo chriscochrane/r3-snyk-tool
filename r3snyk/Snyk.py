@@ -3,10 +3,6 @@ import json
 import os
 import sys
 import logging
-import threading
-import time
-import random
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from .JsonLogWriter import JsonLogWriter
 from .Project import Project
 from .ScanConfiguration import ScanConfiguration
@@ -16,7 +12,7 @@ from datetime import datetime
 # Represent a snyk scan
 
 class Snyk:
-    def __init__(self, project_dir=None, user_projects=None, scan_type=None, scan_name=None, threads=1):
+    def __init__(self, project_dir=None, user_projects=None, scan_type=None, scan_name=None):
 
         self.buildfile = "build.gradle"
         self.scan_timestamp = f"{datetime.now().strftime('%Y%m%d-%H%M%S%f')[:-4]}"
@@ -60,18 +56,11 @@ class Snyk:
         if self.project_dir is None:
             self.project_dir = os.getcwd()
 
-        self.threads = threads
-
         # other (internal) stuff
         self.all_gradle_projects = set()    # list of discovered gradle projects
         self.is_tested = False              # has a test been run?
         self.scanned_projects = {}          # project data that has been scanned, indexed by project name
 
-
-    @staticmethod
-    def _is_gradle_lock_error(error: str) -> bool:
-        """Return True if the error is a transient Gradle file-lock conflict."""
-        return "Failed to ping owner of lock" in error or "lock" in error.lower()
 
     # Discover all the gradle projects within the project dir
     #
@@ -139,34 +128,12 @@ class Snyk:
         if self.dump_snyk:
             jsonLogger = JsonLogWriter(self.scan_timestamp)
 
-        total = len(projects_to_scan)
-        lock = threading.Lock()
-        progress = [0]          # mutable counter, protected by lock
-        thread_labels = {}      # thread ident -> short label number, protected by lock
-        label_counter = [0]     # next label to assign, protected by lock
-        stop_event = threading.Event()
+        pCount = 0
 
-        def get_thread_label():
-            tid = threading.get_ident()
-            with lock:
-                if tid not in thread_labels:
-                    label_counter[0] += 1
-                    thread_labels[tid] = label_counter[0]
-                return thread_labels[tid]
-
-        def scan_project(p):
-            # If a fatal error occurred in another thread, skip this scan
-            if stop_event.is_set():
-                return p, None, None
-
-            thread_num = get_thread_label()
-
-            with lock:
-                progress[0] += 1
-                current = progress[0]
-
-            logging.info(f"scanning project [{p}] [{current}/{total}] [T{thread_num}]")
-
+        for p in projects_to_scan:
+            pCount += 1
+            # Run actual Snyk test with specified options
+            logging.info(f"scanning project [{p}] [{pCount}/{len(projects_to_scan)}]")
             params = ['snyk', 'test', self.project_dir,
                     '--show-vulnerable-paths=all',
                     '--json'
@@ -184,61 +151,35 @@ class Snyk:
 
             logging.info(f"Running [{' '.join(params)}]")
 
-            max_attempts = 3
-            retry_base_delay = 3.0  # seconds
-
-            for attempt in range(1, max_attempts + 1):
-                # actually run Snyk and capture its output
-                result = subprocess.run(
-                    params,
-                    capture_output=True,
-                    text=True,
-                    check=False
-                )
-                json_data = json.loads(result.stdout)
-
-                if "error" in json_data:
-                    error = json_data["error"]
-                    if attempt < max_attempts and self._is_gradle_lock_error(error):
-                        delay = retry_base_delay + random.uniform(0, 2)
-                        logging.info(f"Gradle lock conflict on [{p}], retrying in {delay:.1f}s (attempt {attempt}/{max_attempts}) [T{thread_num}]")
-                        time.sleep(delay)
-                        continue
-                    return p, None, error
-                else:
-                    return p, json_data, None
-
-            # unreachable, but satisfies the type checker
-            return p, None, "max retries exceeded"
-
-        with ThreadPoolExecutor(max_workers=self.threads) as executor:
-            futures = {executor.submit(scan_project, p): p for p in projects_to_scan}
-            for future in as_completed(futures):
-                p, json_data, error = future.result()
-
-                # drain remaining futures without processing once a fatal error is set
-                if stop_event.is_set():
+            # actually run Snyk and capture its output
+            result = subprocess.run(
+                params,
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            # parse the result for errors
+            json_data = json.loads(result.stdout)
+            if "error" in json_data:
+                json_err = json_data["error"]
+                if json_err.startswith("Specified sub-project not found:"):
+                    # this specific error - just log something and carry on
+                    logging.info(f"Snyk failed to find sub-project [{p}]; ignoring")
                     continue
+                else:
+                    logging.error(f"Snyk failed for project [{p}]")
+                    # consider this sort of error as fatal - there is something fundamentally wrong
+                    self.scan_error = json_err
+                    break
 
-                if error is not None:
-                    if error.startswith("Specified sub-project not found:"):
-                        # this specific error - just log something and carry on
-                        logging.info(f"Snyk failed to find sub-project [{p}]; ignoring")
-                    else:
-                        logging.error(f"Snyk failed for project [{p}]")
-                        # consider this sort of error as fatal - there is something fundamentally wrong
-                        self.scan_error = error
-                        stop_event.set()
+            else:
+                # Create a project object to hold/parse the scan result data, and provide access
+                # to the vulnerabilities within.
+                new_project = Project(p, json_data)
+                self.scanned_projects[p] = new_project
 
-                elif json_data is not None:
-                    # Create a project object to hold/parse the scan result data, and provide access
-                    # to the vulnerabilities within.
-                    new_project = Project(p, json_data)
-                    with lock:
-                        self.scanned_projects[p] = new_project
-
-                    if jsonLogger:
-                        jsonLogger.write_to_file(p, json_data)
+                if jsonLogger:
+                    jsonLogger.write_to_file(p, json_data)
 
         # finally compress the log dir
         if jsonLogger:
