@@ -43,6 +43,7 @@ It can be run from the command-line thus:
 |`count`|Count the number of waivers in the waivers file|
 |`jlist`|List the Jira tickets that are currently open for the project|
 |`jmad`|Mark a Jira ticket for a security vulnerbility as 'Done'|
+|`json2csv`|Convert a JSON vulnerability report inot CSV|
 |`jsync`|Synchronise security vulnerability Jira tickets with the current project|
 |`jwav`|Mark a Jira ticket for a security vulnerbility as 'Waiver Provided'|
 |`list`|List the IDs in the waivers file|
@@ -83,6 +84,23 @@ This is a useful command for when a version of Corda has gone out of support but
 
 This command sets all the required mandatory fields in order to progress the Jira tickets to 'Done'.
 
+### json2csv
+Given a JSON vulnerability report file, generate CSV data to standard-out. This is useful for importing a vulnerability list into a spreadsheet for review.
+
+Note that the generated CSV data does not contain all information for each vulnerability. It includes:
+* CVE identifier (or the CWE if no CVE is present)
+* Snyk identifier
+* Severity
+* Where the vulnerability occurs (the package)
+* Title of the vulnerability
+* Publication date of the vulnerability
+* The version of the package required to fix the vulnerability
+* The associated Jira ticket (if any)
+
+Example:
+
+`sk json2csv vulns-4.12-01.json > vulns-4.12-01.csv`
+
 ### jsync
 Synchronises Jira tickets associated with the current project so that:
 * Jira tickets for vulnerabilities that have been waivered are marked as "Waiver Provided" and the waiver text is added to the Jira ticket as a comment
@@ -103,7 +121,7 @@ List the Snyk IDs of the waivered vulnerabilities that are redundant. That is, t
 Remove the supplied list of Snyk IDs from the waivers file. The waivrers file is updated in-place.
 
 ### rmred
-A combination of `rm` nd `red` commands - identify the redundant waivers and remove them from the waivers file. The waivrers file is updated in-place.
+A combination of `rm` nd `red` commands - identify the redundant waivers and remove them from the waivers file. The waivers file is updated in-place.
 
 ### sum
 Perform a Snyk scan on the project and output a summary of the critical, high, medium, and low-severity vulnerabilities that were found. An example of the output from this command is:

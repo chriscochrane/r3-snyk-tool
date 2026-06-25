@@ -192,14 +192,14 @@ def print_as_json(scan_timestamp, openVulns, waiveredVulns):
 
 
 def print_as_csv(openVulns, waiveredVulns):
-    print("Num,CVE,SNYK,Sev,Where,Title,Published,Requires,Jira")
+    print("Num,CVE,Title,SNYK,Sev,Where,Published,Requires,Jira")
     for i, v in enumerate(openVulns):
         if v.cve:
             for cve_id in v.cve:
-                print(f"{i + 1},{cve_id},{v.id},{v.severity},{v.name},{v.title},{v.publishedDate},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ''}")
+                print(f"{i + 1},{cve_id},{v.title},{v.id},{v.severity},{v.name},{v.publishedDate},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ''}")
         else:
             for cwe_id in v.cwe:
-                print(f"{i + 1},{cwe_id},{v.id},{v.severity},{v.name},{v.title},{v.publishedDate},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ''}")
+                print(f"{i + 1},{cwe_id},{v.title},{v.id},{v.severity},{v.name},{v.publishedDate},{' or '.join([str(x) for x in v.fixed])},{v.jira_id if v.jira_id is not None else ''}")
 
 
 def convertJsonToCsv(args : argparse.Namespace):
