@@ -213,7 +213,7 @@ def convertJsonToCsv(args : argparse.Namespace):
         print(f"Error: failed to parse JSON: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print("Num,CVE,SNYK,Sev,Where,Title,Published,Requires,Jira")
+    print("Num,CVE,Title,SNYK,Sev,Where,Published,Requires,Jira")
     open_vulns = json_doc.get("open", {}).get("vulnerabilities", [])
     for i, v in enumerate(open_vulns):
         cve_list = v.get("cve") or []
@@ -223,7 +223,7 @@ def convertJsonToCsv(args : argparse.Namespace):
         requires = ' or '.join(str(x) for x in fixed)
         jira_id = v.get("jira_id", "")
         for vuln_id in ids_to_print:
-            print(f"{i + 1},{vuln_id},{v['snyk']},{v['severity']},{v['name']},{v['title']},{v['publishedDate']},{requires},{jira_id}")
+            print(f"{i + 1},{vuln_id},{v['title']},{v['snyk']},{v['severity']},{v['name']},{v['publishedDate']},{requires},{jira_id}")
 
 
 def _run_snyk_test(args : argparse.Namespace):
