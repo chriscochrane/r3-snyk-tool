@@ -1,10 +1,6 @@
 # r3-snyk-tool
 This is a helper tool written in Python, that was developed to help manage vulnerbilities in R3 projects, which use Snyk for vulnerability scanning. It initially started as a waiver-management tool, but later expanded to include general Snyk-scanning helper utilities.
 
-The [first part](#how-to-use-r3-snyk-tool) of this document describes how to use the tool.
-
-The [second part](#under-the-bonnet) provides some information about the source code, project structure, and so forth.
-
 # How to use r3-snyk-tool
 
 ## Environment
@@ -176,3 +172,15 @@ A collection of named scans. Each scan can contain the following sub-elements:
 |sub-projects|A list of sub-projects to be included in the scan.|
 |project-mapping|A mapping of sub-project names to sub-project directories.|
 
+# To-do List
+Some ideas of things to improve, maybe fix.
+
+Update the handling of the waivers file to accommodate the fact that waivers can related to specific dependency paths.
+
+* In the json report produced by the 'test' command - I think the waivers are only showing the reason for the first occurrence of the waiver. By that I mean - if a waiver is specified for several different paths, and if there's a different reason for each of those paths, then the report only shows the reason text for one of them (the first one it finds in the original report, I guess), and it doesn’t show that the waiver has specific paths.
+
+* Config file: think about genericizing the paths used for the scans - maybe have a "dev root" directory where all the repos can be found…devs typically have a single root dir for their corda projects (don't they?) and then individual scans just spoecifyt paths relative to the dev root. This way, a developer installing the snyk-tool only has to tweak one config setting.
+
+* Log a warning if the number of captured Snyk reports in the cache gets too large. ALTERNATE: if the number of reports is too large, remove the oldest N (and log something about what is going on).
+
+* Better handling for when an invalid scan name is provided to 'sum', 'test', etc.
